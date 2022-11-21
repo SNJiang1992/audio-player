@@ -1,0 +1,26 @@
+{
+  "name": "audio-amr-player",
+  "private": false,
+  "version": "0.0.5",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint src/",
+    "unbuild": "unbuild",
+    "doc":"typedoc --out docs src/index.ts"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^0.30.1",
+    "eslint": "^8.27.0",
+    "typedoc": "^0.23.21",
+    "typescript": "^4.6.4",
+    "unbuild": "^1.0.1",
+    "vite": "^3.2.3"
+  },
+  "dependencies": {
+    "benz-amr-recorder": "^1.1.5"
+  }
+}

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>测试</title>
+    <style>
+      #progress{
+        height: 10px;
+        width: 100px;
+        outline: 1px solid;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <input type="file" id="uploader" accept="audio/*">
+    <button id="start">开始</button>
+    <button id="pause">暂停</button>
+    <button id="destroy">销毁</button>
+
+    <div id="progress"></div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
