@@ -30,6 +30,7 @@ export class AudioPlayer {
   private commonPlayer: HTMLAudioElement | null = null
   private amrPlayer: any = null
   private afterInit: Function | undefined
+  private _onEnd: undefined | Function
   /**
    *  音频的总时间
    */
@@ -76,12 +77,18 @@ export class AudioPlayer {
         this.amrPlayer.initWithUrl(this.playUrl).then(() => {
           this.duration = this.amrPlayer.getDuration()
           this.afterInit && this.afterInit()
+          this.amrPlayer.onStop(() => {
+            this._onEnd && this._onEnd()
+          })
         })
       }
       else {
         this.amrPlayer.initWithBlob(this._file).then(() => {
           this.duration = this.amrPlayer.getDuration()
           this.afterInit && this.afterInit()
+          this.amrPlayer.onStop(() => {
+            this._onEnd && this._onEnd()
+          })
         })
       }
     }
@@ -100,6 +107,7 @@ export class AudioPlayer {
         })
         audio.addEventListener('ended', () => {
           this.temporary = 0
+          this._onEnd && this._onEnd()
         })
         audio.addEventListener('playing', () => {
           this.startTime = new Date().valueOf()
@@ -159,6 +167,14 @@ export class AudioPlayer {
    */
   onTimeUpdate(fn: Function) {
     this.timeUpdateFn = fn
+  }
+
+  /**
+   *
+   * @param fn 音频播放完成的回调
+   */
+  onEnd(fn: Function) {
+    this._onEnd = fn
   }
 
   /**
