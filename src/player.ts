@@ -21,11 +21,15 @@ export interface PlayerOpt {
    * 播放器初始化的回调
    */
   afterInit: Function
+  /**
+   *  文件类型 指定后不再通过url来判断
+   */
+  fileType?: string
 }
 
 export class AudioPlayer {
   private _file
-  private extName = ''
+  private extName: null | string = null
   private playUrl = ''
   private commonPlayer: HTMLAudioElement | null = null
   private amrPlayer: any = null
@@ -54,13 +58,13 @@ export class AudioPlayer {
         console.error('文件类型只能是音频文件')
 
       this._file = opt.file
-      this.extName = getExtName(this._file.name)
     }
 
-    if (opt.url) {
-      this.extName = getExtName(opt.url)
+    if (opt.url)
       this.playUrl = opt.url
-    }
+
+    //  overwrite filetype
+    this.extName = opt.fileType ? opt.fileType : opt.file ? getExtName(opt.file.name) : getExtName(opt.url)
 
     this.afterInit = opt.afterInit
 
@@ -103,7 +107,7 @@ export class AudioPlayer {
         this.afterInit && this.afterInit()
         audio.addEventListener('timeupdate', () => {
           const now = new Date().valueOf()
-          this.timeUpdateFn && this.timeUpdateFn((now - this.startTime) / 1000 + this.temporary)
+          this.timeUpdateFn && this.startTime !== 0 && this.timeUpdateFn((now - this.startTime) / 1000 + this.temporary)
         })
         audio.addEventListener('ended', () => {
           this.temporary = 0
@@ -129,7 +133,7 @@ export class AudioPlayer {
       if (this.amrPlayer.isPlaying())
         return
       raf = requestAnimationFrame(this.amrTimeUpdate.bind(this))
-      this.amrPlayer.playOrResume()
+      this.amrPlayer.play(this.temporary)
       this.amrPlayer.onEnded(() => {
         raf && cancelAnimationFrame(raf)
       })
@@ -146,6 +150,16 @@ export class AudioPlayer {
     this.amrPlayer && this.amrPlayer.pause()
     raf && cancelAnimationFrame(raf)
     this.commonPlayer && this.commonPlayer.pause()
+  }
+
+  /**
+   *
+   * @param time 选择从当前时间播放
+   */
+  setTime(time: number) {
+    this.temporary = time
+    if (this.commonPlayer)
+      this.commonPlayer.currentTime = time
   }
 
   /**

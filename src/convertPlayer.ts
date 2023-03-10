@@ -2,6 +2,45 @@ import { getExtName, isAudio } from './utils'
 
 import AMR from './amr.min.js'
 
+import AMRWB from './amrwb-util.js'
+
+function float32Array2Uint8Array(float32Array: any) {
+  const len = float32Array.length
+  const output = new Uint8Array(len)
+
+  for (let i = 0; i < len; i++) {
+    let tmp = Math.max(-1, Math.min(1, float32Array[i]))
+    tmp = tmp < 0 ? tmp * 0x8000 : tmp * 0x7FFF
+    tmp = tmp / 256
+    output[i] = tmp + 128
+  }
+
+  return output
+}
+
+function samplesToWAV(samples: Uint8Array) {
+  const out = new Uint8Array(samples.length + 44)
+  let offset = 0
+  const write_int16 = function (value: number) { const a = new Uint8Array(2); (new Int16Array(a.buffer))[0] = value; out.set(a, offset); offset += 2 }
+  const write_int32 = function (value: number) { const a = new Uint8Array(4); (new Int32Array(a.buffer))[0] = value; out.set(a, offset); offset += 4 }
+  const write_string = function (value: string) { const d = (new TextEncoder()).encode(value); out.set(d, offset); offset += d.length }
+  write_string('RIFF')
+  write_int32(36 + samples.length)
+  write_string('WAVEfmt ')
+  write_int32(16)
+  const bits_per_sample = 8
+  const sample_rate = 16000
+  const channels = 1
+  const bytes_per_frame = bits_per_sample / 8 * channels
+  const bytes_per_sec = bytes_per_frame * sample_rate
+  write_int16(1); write_int16(1); write_int32(sample_rate)
+  write_int32(bytes_per_sec); write_int16(bytes_per_frame)
+  write_int16(bits_per_sample); write_string('data')
+  write_int32(samples.length)
+  out.set(samples, offset)
+  return out
+}
+
 export interface ConvertOpt {
   /**
      * 文件地址
@@ -54,11 +93,21 @@ export class ConvertPlayer {
       if (this._file) {
         const fr = new FileReader()
         fr.onload = (e: any) => {
-          const wavU8Array = AMR.toWAV(new Uint8Array(e.target.result))
+          const U8Array = new Uint8Array(e.target.result)
+          const headerInfo = Array.from(U8Array.slice(0, 6)).toString()
+          let wavU8Array = new Uint8Array()
+          if (headerInfo === '35,33,65,77,82,10') {
+            wavU8Array = AMR.toWAV(U8Array)
+          }
+          else {
+            AMRWB.decodeInit()
+            const samples = AMRWB.decode(U8Array)
+            AMRWB.decodeExit()
+            wavU8Array = samplesToWAV(float32Array2Uint8Array(samples))
+          }
           const url = URL.createObjectURL(new Blob([wavU8Array], { type: 'audio/wav' }))
           if (this.audio)
             this.audio.src = url
-          URL.revokeObjectURL(url)
         }
         fr.readAsArrayBuffer(this._file)
       }
@@ -66,7 +115,18 @@ export class ConvertPlayer {
         fetch(this.playUrl).then((response) => {
           return response.arrayBuffer()
         }).then((buffer) => {
-          const wavU8Array = AMR.toWAV(new Uint8Array(buffer))
+          const U8Array = new Uint8Array(buffer)
+          const headerInfo = Array.from(U8Array.slice(0, 6)).toString()
+          let wavU8Array = new Uint8Array()
+          if (headerInfo === '35,33,65,77,82,10') {
+            wavU8Array = AMR.toWAV(U8Array)
+          }
+          else {
+            AMRWB.decodeInit()
+            const samples = AMRWB.decode(U8Array)
+            AMRWB.decodeExit()
+            wavU8Array = samplesToWAV(float32Array2Uint8Array(samples))
+          }
           const url = URL.createObjectURL(new Blob([wavU8Array], { type: 'audio/wav' }))
           if (this.audio)
             this.audio.src = url

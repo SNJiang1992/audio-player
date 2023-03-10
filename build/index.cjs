@@ -25448,6 +25448,11059 @@ var AMR = function() {
   return AMR;
 }();
 
+var AMRWB = function() {
+  var AMRWB2 = {};
+  var Module2 = { canvas: {}, print: function(text) {
+    console.log(text);
+  }, onRuntimeInitialized: function() {
+    AMRWB2.D_IF_init = Module2._D_IF_init;
+    AMRWB2.D_IF_exit = Module2._D_IF_exit;
+    AMRWB2.D_IF_decode = Module2._D_IF_decode;
+    AMRWB2._free = Module2._free;
+    AMRWB2._HEAPU8 = Module2.HEAPU8;
+    AMRWB2._malloc = Module2._malloc;
+    return 0;
+  } };
+  var moduleOverrides = {};
+  var key;
+  for (key in Module2) {
+    if (Module2.hasOwnProperty(key)) {
+      moduleOverrides[key] = Module2[key];
+    }
+  }
+  Module2["arguments"] = [];
+  Module2["thisProgram"] = "./this.program";
+  Module2["quit"] = function(status, toThrow) {
+    throw toThrow;
+  };
+  Module2["preRun"] = [];
+  Module2["postRun"] = [];
+  var ENVIRONMENT_IS_WEB = false;
+  var ENVIRONMENT_IS_WORKER = false;
+  var ENVIRONMENT_IS_NODE = false;
+  var ENVIRONMENT_IS_SHELL = false;
+  if (Module2["ENVIRONMENT"]) {
+    if (Module2["ENVIRONMENT"] === "WEB") {
+      ENVIRONMENT_IS_WEB = true;
+    } else if (Module2["ENVIRONMENT"] === "WORKER") {
+      ENVIRONMENT_IS_WORKER = true;
+    } else if (Module2["ENVIRONMENT"] === "NODE") {
+      ENVIRONMENT_IS_NODE = true;
+    } else if (Module2["ENVIRONMENT"] === "SHELL") {
+      ENVIRONMENT_IS_SHELL = true;
+    } else {
+      throw new Error("Module['ENVIRONMENT'] value is not valid. must be one of: WEB|WORKER|NODE|SHELL.");
+    }
+  } else {
+    ENVIRONMENT_IS_WEB = typeof window === "object";
+    ENVIRONMENT_IS_WORKER = typeof importScripts === "function";
+    ENVIRONMENT_IS_NODE = typeof process === "object" && typeof require === "function" && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
+    ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+  }
+  if (ENVIRONMENT_IS_NODE) {
+    var nodeFS;
+    var nodePath;
+    Module2["read"] = function shell_read(filename, binary) {
+      var ret;
+      ret = tryParseAsDataURI(filename);
+      if (!ret) {
+        if (!nodeFS)
+          nodeFS = require("fs");
+        if (!nodePath)
+          nodePath = require("path");
+        filename = nodePath["normalize"](filename);
+        ret = nodeFS["readFileSync"](filename);
+      }
+      return binary ? ret : ret.toString();
+    };
+    Module2["readBinary"] = function readBinary(filename) {
+      var ret = Module2["read"](filename, true);
+      if (!ret.buffer) {
+        ret = new Uint8Array(ret);
+      }
+      assert(ret.buffer);
+      return ret;
+    };
+    if (process["argv"].length > 1) {
+      Module2["thisProgram"] = process["argv"][1].replace(/\\/g, "/");
+    }
+    Module2["arguments"] = process["argv"].slice(2);
+    if (typeof module !== "undefined") {
+      module["exports"] = Module2;
+    }
+    process["on"]("uncaughtException", function(ex) {
+      if (!(ex instanceof ExitStatus)) {
+        throw ex;
+      }
+    });
+    process["on"]("unhandledRejection", function(reason, p) {
+      Module2["printErr"]("node.js exiting due to unhandled promise rejection");
+      process["exit"](1);
+    });
+    Module2["inspect"] = function() {
+      return "[Emscripten Module object]";
+    };
+  } else if (ENVIRONMENT_IS_SHELL) {
+    if (typeof read != "undefined") {
+      Module2["read"] = function shell_read(f) {
+        var data2 = tryParseAsDataURI(f);
+        if (data2) {
+          return intArrayToString(data2);
+        }
+        return read(f);
+      };
+    }
+    Module2["readBinary"] = function readBinary(f) {
+      var data2;
+      data2 = tryParseAsDataURI(f);
+      if (data2) {
+        return data2;
+      }
+      if (typeof readbuffer === "function") {
+        return new Uint8Array(readbuffer(f));
+      }
+      data2 = read(f, "binary");
+      assert(typeof data2 === "object");
+      return data2;
+    };
+    if (typeof scriptArgs != "undefined") {
+      Module2["arguments"] = scriptArgs;
+    } else if (typeof arguments != "undefined") {
+      Module2["arguments"] = arguments;
+    }
+    if (typeof quit === "function") {
+      Module2["quit"] = function(status, toThrow) {
+        quit(status);
+      };
+    }
+  } else if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+    Module2["read"] = function shell_read(url) {
+      try {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", url, false);
+        xhr.send(null);
+        return xhr.responseText;
+      } catch (err) {
+        var data2 = tryParseAsDataURI(url);
+        if (data2) {
+          return intArrayToString(data2);
+        }
+        throw err;
+      }
+    };
+    if (ENVIRONMENT_IS_WORKER) {
+      Module2["readBinary"] = function readBinary(url) {
+        try {
+          var xhr = new XMLHttpRequest();
+          xhr.open("GET", url, false);
+          xhr.responseType = "arraybuffer";
+          xhr.send(null);
+          return new Uint8Array(xhr.response);
+        } catch (err) {
+          var data2 = tryParseAsDataURI(url);
+          if (data2) {
+            return data2;
+          }
+          throw err;
+        }
+      };
+    }
+    Module2["readAsync"] = function readAsync(url, onload, onerror) {
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", url, true);
+      xhr.responseType = "arraybuffer";
+      xhr.onload = function xhr_onload() {
+        if (xhr.status == 200 || xhr.status == 0 && xhr.response) {
+          onload(xhr.response);
+          return;
+        }
+        var data2 = tryParseAsDataURI(url);
+        if (data2) {
+          onload(data2.buffer);
+          return;
+        }
+        onerror();
+      };
+      xhr.onerror = onerror;
+      xhr.send(null);
+    };
+    if (typeof arguments != "undefined") {
+      Module2["arguments"] = arguments;
+    }
+    Module2["setWindowTitle"] = function(title) {
+      document.title = title;
+    };
+  } else {
+    throw new Error("unknown runtime environment");
+  }
+  Module2["print"] = typeof console !== "undefined" ? console.log.bind(console) : typeof print !== "undefined" ? print : null;
+  Module2["printErr"] = typeof printErr !== "undefined" ? printErr : typeof console !== "undefined" && console.warn.bind(console) || Module2["print"];
+  Module2.print = Module2["print"];
+  Module2.printErr = Module2["printErr"];
+  for (key in moduleOverrides) {
+    if (moduleOverrides.hasOwnProperty(key)) {
+      Module2[key] = moduleOverrides[key];
+    }
+  }
+  moduleOverrides = void 0;
+  var STACK_ALIGN = 16;
+  stackSave = function() {
+    abort("cannot use the stack before compiled code is ready to run, and has provided stack access");
+  };
+  function staticAlloc(size) {
+    assert(!staticSealed);
+    var ret = STATICTOP;
+    STATICTOP = STATICTOP + size + 15 & -16;
+    return ret;
+  }
+  function alignMemory(size, factor) {
+    if (!factor)
+      factor = STACK_ALIGN;
+    var ret = size = Math.ceil(size / factor) * factor;
+    return ret;
+  }
+  function warnOnce(text) {
+    if (!warnOnce.shown)
+      warnOnce.shown = {};
+    if (!warnOnce.shown[text]) {
+      warnOnce.shown[text] = 1;
+      Module2.printErr(text);
+    }
+  }
+  new Array(0);
+  var GLOBAL_BASE = 8;
+  var ABORT = 0;
+  function assert(condition, text) {
+    if (!condition) {
+      abort("Assertion failed: " + text);
+    }
+  }
+  function Pointer_stringify(ptr, length) {
+    if (length === 0 || !ptr)
+      return "";
+    var hasUtf = 0;
+    var t;
+    var i = 0;
+    while (1) {
+      assert(ptr + i < TOTAL_MEMORY);
+      t = HEAPU8[ptr + i >> 0];
+      hasUtf |= t;
+      if (t == 0 && !length)
+        break;
+      i++;
+      if (length && i == length)
+        break;
+    }
+    if (!length)
+      length = i;
+    var ret = "";
+    if (hasUtf < 128) {
+      var MAX_CHUNK = 1024;
+      var curr;
+      while (length > 0) {
+        curr = String.fromCharCode.apply(String, HEAPU8.subarray(ptr, ptr + Math.min(length, MAX_CHUNK)));
+        ret = ret ? ret + curr : curr;
+        ptr += MAX_CHUNK;
+        length -= MAX_CHUNK;
+      }
+      return ret;
+    }
+    return UTF8ToString(ptr);
+  }
+  var UTF8Decoder = typeof TextDecoder !== "undefined" ? new TextDecoder("utf8") : void 0;
+  function UTF8ArrayToString(u8Array, idx) {
+    var endPtr = idx;
+    while (u8Array[endPtr])
+      ++endPtr;
+    if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
+      return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
+    } else {
+      var u0, u1, u2, u3, u4, u5;
+      var str = "";
+      while (1) {
+        u0 = u8Array[idx++];
+        if (!u0)
+          return str;
+        if (!(u0 & 128)) {
+          str += String.fromCharCode(u0);
+          continue;
+        }
+        u1 = u8Array[idx++] & 63;
+        if ((u0 & 224) == 192) {
+          str += String.fromCharCode((u0 & 31) << 6 | u1);
+          continue;
+        }
+        u2 = u8Array[idx++] & 63;
+        if ((u0 & 240) == 224) {
+          u0 = (u0 & 15) << 12 | u1 << 6 | u2;
+        } else {
+          u3 = u8Array[idx++] & 63;
+          if ((u0 & 248) == 240) {
+            u0 = (u0 & 7) << 18 | u1 << 12 | u2 << 6 | u3;
+          } else {
+            u4 = u8Array[idx++] & 63;
+            if ((u0 & 252) == 248) {
+              u0 = (u0 & 3) << 24 | u1 << 18 | u2 << 12 | u3 << 6 | u4;
+            } else {
+              u5 = u8Array[idx++] & 63;
+              u0 = (u0 & 1) << 30 | u1 << 24 | u2 << 18 | u3 << 12 | u4 << 6 | u5;
+            }
+          }
+        }
+        if (u0 < 65536) {
+          str += String.fromCharCode(u0);
+        } else {
+          var ch = u0 - 65536;
+          str += String.fromCharCode(55296 | ch >> 10, 56320 | ch & 1023);
+        }
+      }
+    }
+  }
+  function UTF8ToString(ptr) {
+    return UTF8ArrayToString(HEAPU8, ptr);
+  }
+  typeof TextDecoder !== "undefined" ? new TextDecoder("utf-16le") : void 0;
+  function demangle(func) {
+    warnOnce("warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling");
+    return func;
+  }
+  function demangleAll(text) {
+    var regex = /__Z[\w\d_]+/g;
+    return text.replace(regex, function(x) {
+      var y = demangle(x);
+      return x === y ? x : x + " [" + y + "]";
+    });
+  }
+  function jsStackTrace() {
+    var err = new Error();
+    if (!err.stack) {
+      try {
+        throw new Error(0);
+      } catch (e) {
+        err = e;
+      }
+      if (!err.stack) {
+        return "(no stack trace available)";
+      }
+    }
+    return err.stack.toString();
+  }
+  function stackTrace() {
+    var js = jsStackTrace();
+    if (Module2["extraStackTrace"])
+      js += "\n" + Module2["extraStackTrace"]();
+    return demangleAll(js);
+  }
+  var buffer, HEAPU8, HEAP16, HEAP32, HEAPU32;
+  function updateGlobalBufferViews() {
+    Module2["HEAP8"] = new Int8Array(buffer);
+    Module2["HEAP16"] = HEAP16 = new Int16Array(buffer);
+    Module2["HEAP32"] = HEAP32 = new Int32Array(buffer);
+    Module2["HEAPU8"] = HEAPU8 = new Uint8Array(buffer);
+    Module2["HEAPU16"] = new Uint16Array(buffer);
+    Module2["HEAPU32"] = HEAPU32 = new Uint32Array(buffer);
+    Module2["HEAPF32"] = new Float32Array(buffer);
+    Module2["HEAPF64"] = new Float64Array(buffer);
+  }
+  var STATIC_BASE, STATICTOP, staticSealed;
+  var STACK_BASE, STACKTOP, STACK_MAX;
+  var DYNAMIC_BASE, DYNAMICTOP_PTR;
+  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
+  staticSealed = false;
+  function writeStackCookie() {
+    assert((STACK_MAX & 3) == 0);
+    HEAPU32[(STACK_MAX >> 2) - 1] = 34821223;
+    HEAPU32[(STACK_MAX >> 2) - 2] = 2310721022;
+  }
+  function checkStackCookie() {
+    if (HEAPU32[(STACK_MAX >> 2) - 1] != 34821223 || HEAPU32[(STACK_MAX >> 2) - 2] != 2310721022) {
+      abort("Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x" + HEAPU32[(STACK_MAX >> 2) - 2].toString(16) + " " + HEAPU32[(STACK_MAX >> 2) - 1].toString(16));
+    }
+    if (HEAP32[0] !== 1668509029)
+      throw "Runtime error: The application has corrupted its heap memory area (address zero)!";
+  }
+  function abortStackOverflow(allocSize) {
+    abort("Stack overflow! Attempted to allocate " + allocSize + " bytes on the stack, but stack has only " + (STACK_MAX - stackSave() + allocSize) + " bytes available!");
+  }
+  function abortOnCannotGrowMemory() {
+    abort("Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value " + TOTAL_MEMORY + ", (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ");
+  }
+  function enlargeMemory() {
+    abortOnCannotGrowMemory();
+  }
+  var TOTAL_STACK = Module2["TOTAL_STACK"] || 65536;
+  var TOTAL_MEMORY = Module2["TOTAL_MEMORY"] || 16777216;
+  if (TOTAL_MEMORY < TOTAL_STACK)
+    Module2.printErr("TOTAL_MEMORY should be larger than TOTAL_STACK, was " + TOTAL_MEMORY + "! (TOTAL_STACK=" + TOTAL_STACK + ")");
+  assert(typeof Int32Array !== "undefined" && typeof Float64Array !== "undefined" && Int32Array.prototype.subarray !== void 0 && Int32Array.prototype.set !== void 0, "JS engine does not provide full typed array support");
+  if (Module2["buffer"]) {
+    buffer = Module2["buffer"];
+    assert(buffer.byteLength === TOTAL_MEMORY, "provided buffer should be " + TOTAL_MEMORY + " bytes, but it is " + buffer.byteLength);
+  } else {
+    {
+      buffer = new ArrayBuffer(TOTAL_MEMORY);
+    }
+    assert(buffer.byteLength === TOTAL_MEMORY);
+    Module2["buffer"] = buffer;
+  }
+  updateGlobalBufferViews();
+  function getTotalMemory() {
+    return TOTAL_MEMORY;
+  }
+  HEAP32[0] = 1668509029;
+  HEAP16[1] = 25459;
+  if (HEAPU8[2] !== 115 || HEAPU8[3] !== 99)
+    throw "Runtime error: expected the system to be little-endian!";
+  function callRuntimeCallbacks(callbacks) {
+    while (callbacks.length > 0) {
+      var callback = callbacks.shift();
+      if (typeof callback == "function") {
+        callback();
+        continue;
+      }
+      var func = callback.func;
+      if (typeof func === "number") {
+        if (callback.arg === void 0) {
+          Module2["dynCall_v"](func);
+        } else {
+          Module2["dynCall_vi"](func, callback.arg);
+        }
+      } else {
+        func(callback.arg === void 0 ? null : callback.arg);
+      }
+    }
+  }
+  var __ATPRERUN__ = [];
+  var __ATINIT__ = [];
+  var __ATMAIN__ = [];
+  var __ATEXIT__ = [];
+  var __ATPOSTRUN__ = [];
+  var runtimeInitialized = false;
+  var runtimeExited = false;
+  function preRun() {
+    if (Module2["preRun"]) {
+      if (typeof Module2["preRun"] == "function")
+        Module2["preRun"] = [Module2["preRun"]];
+      while (Module2["preRun"].length) {
+        addOnPreRun(Module2["preRun"].shift());
+      }
+    }
+    callRuntimeCallbacks(__ATPRERUN__);
+  }
+  function ensureInitRuntime() {
+    checkStackCookie();
+    if (runtimeInitialized)
+      return;
+    runtimeInitialized = true;
+    callRuntimeCallbacks(__ATINIT__);
+  }
+  function preMain() {
+    checkStackCookie();
+    callRuntimeCallbacks(__ATMAIN__);
+  }
+  function exitRuntime() {
+    checkStackCookie();
+    callRuntimeCallbacks(__ATEXIT__);
+    runtimeExited = true;
+  }
+  function postRun() {
+    checkStackCookie();
+    if (Module2["postRun"]) {
+      if (typeof Module2["postRun"] == "function")
+        Module2["postRun"] = [Module2["postRun"]];
+      while (Module2["postRun"].length) {
+        addOnPostRun(Module2["postRun"].shift());
+      }
+    }
+    callRuntimeCallbacks(__ATPOSTRUN__);
+  }
+  function addOnPreRun(cb) {
+    __ATPRERUN__.unshift(cb);
+  }
+  function addOnPostRun(cb) {
+    __ATPOSTRUN__.unshift(cb);
+  }
+  assert(Math["imul"] && Math["fround"] && Math["clz32"] && Math["trunc"], "this is a legacy browser, build with LEGACY_VM_SUPPORT");
+  var runDependencies = 0;
+  var runDependencyWatcher = null;
+  var dependenciesFulfilled = null;
+  var runDependencyTracking = {};
+  function addRunDependency(id) {
+    runDependencies++;
+    if (Module2["monitorRunDependencies"]) {
+      Module2["monitorRunDependencies"](runDependencies);
+    }
+    if (id) {
+      assert(!runDependencyTracking[id]);
+      runDependencyTracking[id] = 1;
+      if (runDependencyWatcher === null && typeof setInterval !== "undefined") {
+        runDependencyWatcher = setInterval(function() {
+          if (ABORT) {
+            clearInterval(runDependencyWatcher);
+            runDependencyWatcher = null;
+            return;
+          }
+          var shown = false;
+          for (var dep in runDependencyTracking) {
+            if (!shown) {
+              shown = true;
+              Module2.printErr("still waiting on run dependencies:");
+            }
+            Module2.printErr("dependency: " + dep);
+          }
+          if (shown) {
+            Module2.printErr("(end of list)");
+          }
+        }, 1e4);
+      }
+    } else {
+      Module2.printErr("warning: run dependency added without ID");
+    }
+  }
+  function removeRunDependency(id) {
+    runDependencies--;
+    if (Module2["monitorRunDependencies"]) {
+      Module2["monitorRunDependencies"](runDependencies);
+    }
+    if (id) {
+      assert(runDependencyTracking[id]);
+      delete runDependencyTracking[id];
+    } else {
+      Module2.printErr("warning: run dependency removed without ID");
+    }
+    if (runDependencies == 0) {
+      if (runDependencyWatcher !== null) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+      }
+      if (dependenciesFulfilled) {
+        var callback = dependenciesFulfilled;
+        dependenciesFulfilled = null;
+        callback();
+      }
+    }
+  }
+  Module2["preloadedImages"] = {};
+  Module2["preloadedAudios"] = {};
+  var memoryInitializer = null;
+  var FS = { error: function() {
+    abort("Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1");
+  }, init: function() {
+    FS.error();
+  }, createDataFile: function() {
+    FS.error();
+  }, createPreloadedFile: function() {
+    FS.error();
+  }, createLazyFile: function() {
+    FS.error();
+  }, open: function() {
+    FS.error();
+  }, mkdev: function() {
+    FS.error();
+  }, registerDevice: function() {
+    FS.error();
+  }, analyzePath: function() {
+    FS.error();
+  }, loadFilesFromDB: function() {
+    FS.error();
+  }, ErrnoError: function ErrnoError() {
+    FS.error();
+  } };
+  Module2["FS_createDataFile"] = FS.createDataFile;
+  Module2["FS_createPreloadedFile"] = FS.createPreloadedFile;
+  var dataURIPrefix = "data:application/octet-stream;base64,";
+  function isDataURI(filename) {
+    return String.prototype.startsWith ? filename.startsWith(dataURIPrefix) : filename.indexOf(dataURIPrefix) === 0;
+  }
+  STATIC_BASE = GLOBAL_BASE;
+  STATICTOP = STATIC_BASE + 25648;
+  __ATINIT__.push();
+  memoryInitializer = "data:application/octet-stream;base64,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ywBiAJQAyQD7AF8AkQDGAPgANAACAAEAZQDMAJsAEwAVAAwAEQASABQAEAAZAA0ACgAOABgAFwAWABoACAAPADUAnAAfAGYAzQAJACEACwBnAM4ANgCdABwAGwBoAM8AIgAjAB0ALgAgAB4ANwCeACUAJAAnACYAKABpANAAKQAqACsALAAtADgAagCfANEAOQBCAEsAVABrAHQAfQCGAKAAqQCyALsA0gDbAOQA7QA6AGwAoQDTAD4AcAClANcAQwB1AKoA3ABHAHkArgDgAEwAfgCzAOUAUACCALcA6QBVAIcAvADuAFkAiwDAAPIAOwBtAKIA1AA/AHEApgDYAEQAdgCrAN0ASAB6AK8A4QBNAH8AtADmAFEAgwC4AOoAVgCIAL0A7wBaAIwAwQDzADwAbgCjANUAQAByAKcA2QBFAHcArADeAEkAewCwAOIATgCAALUA5wBSAIQAuQDrAFcAiQC+APAAWwCNAMIA9AA9AG8ApADWAEEAcwCoANoARgB4AK0A3wBKAHwAsQDjAE8AgQC2AOgAUwCFALoA7ABYAIoAvwDxAFwAjgDDAPUAAAAEAAYAZQCfANwAFgEHAAUAAwAvADAAMQAyADMApgCnAKgAqQCqAGYAoADdABcBawClAOIAHAFoAKIA3wAZAWkAowDgABoBbADjAGoApADhABsBZwChAN4AGAE0AAIAAQBtAOQAqwATABUADAARABIAFAAQABkADQAKAA4AGAAXABYAGgAIAA8ANQCsAB8AbgDlAAkAIQALAG8A5gA2AK0AHAAbAHAA5wAiACMAHQAuACAAHgA3AK4AJQAkACcAJgAoAHEA6AApACoAKwAsAC0AOAByAK8A6QA+AHgAtQDvAEsAhQDCAPwAOQBzALAA6gA/AHkAtgDwAEYAgAC9APcATACGAMMA/QBTAI0AygAEAVwAlgDTAA0BVACOAMsABQFdAJcA1AAOAVUAjwDMAAYBXgCYANUADwFWAJAAzQAHAV8AmQDWABABQAB6ALcA8QBNAIcAxAD+AEEAewC4APIATgCIAMUA/wBXAJEAzgAIAWAAmgDXABEBOgB0ALEA6wBCAHwAuQDzAEcAgQC+APgATwCJAMYAAAFYAJIAzwAJAWEAmwDYABIBOwB1ALIA7ABDAH0AugD0AEgAggC/APkAUACKAMcAAQFZAJMA0AAKAWIAnADZABMBPAB2ALMA7QBEAH4AuwD1AEkAgwDAAPoAUQCLAMgAAgFaAJQA0QALAWMAnQDaABQBPQB3ALQA7gBFAH8AvAD2AEoAhADBAPsAUgCMAMkAAwFbAJUA0gAMAWQAngDbABUBAAAEAAYAbQCvAPQANgEHAAUAAwAvADAAMQAyADMAtgC3ALgAuQC6AG4AsAD1ADcBcwC1APoAPAFwALIA9wA5AXEAswD4ADoBdAD7AHIAtAD5ADsBbwCxAPYAOAE0AAIAAQB1APwAuwATABUADAARABIAFAAQABkADQAKAA4AGAAXABYAGgAIAA8ANQC8AB8AdgD9AAkAIQALAHcA/gA2AL0AHAAbAHgA/wAiACMAHQAuACAAHgA3AL4AJQAkACcAJgAoAHkAAAEpACoAKwAsAC0AOAB6AL8AAQE/AIEAxgAIAUwAjgDTABUBWQCbAOAAIgFmAKgA7QAvATkAewDAAAIBRgCIAM0ADwFTAJUA2gAcAWAAogDnACkBPgCAAMUABwFLAI0A0gAUAVgAmgDfACEBZQCnAOwALgE6AHwAwQADAUcAiQDOABABVACWANsAHQFhAKMA6AAqATsAfQDCAAQBQACCAMcACQFDAIUAygAMAUgAigDPABEBTQCPANQAFgFQAJIA1wAZAVUAlwDcAB4BWgCcAOEAIwFdAJ8A5AAmAWIApADpACsBZwCpAO4AMAFqAKwA8QAzATwAfgDDAAUBQQCDAMgACgFEAIYAywANAUkAiwDQABIBTgCQANUAFwFRAJMA2AAaAVYAmADdAB8BWwCdAOIAJAFeAKAA5QAnAWMApQDqACwBaACqAO8AMQFrAK0A8gA0AT0AfwDEAAYBQgCEAMkACwFFAIcAzAAOAUoAjADRABMBTwCRANYAGAFSAJQA2QAbAVcAmQDeACABXACeAOMAJQFfAKEA5gAoAWQApgDrAC0BaQCrAPAAMgFsAK4A8wA1AQAABAAGAHkAxwAYAWYBBwAFAAMALwAwADEAMgAzAM4AzwDQANEA0gB6AMgAGQFnAX8AzQAeAWwBfADKABsBaQF9AMsAHAFqAYAAHwF+AMwAHQFrAXsAyQAaAWgBNAACAAEAgQAgAdMAEwAVAAwAEQASABQAEAAZAA0ACgAOABgAFwAWABoACAAPADUA1AAfAIIAIQEJACEACwCDACIBNgDVABwAGwCEACMBIgAjAB0ALgAgAB4ANwDWACUAJAAnACYAKACFACQBKQAqACsALAAtADgAhgDXACUBxgArAYgAeACKADwAFwE6AD4AZQGLAIwAJwGcADkA2wApAT8A2QCJAKoALAHeAEAAagA9AE4AJgFcAI4AjQCHAN0AKAEtAVcBOwAqAbgASQE7AdwA2AAJAfsA2gDtAGAB3wCdAFYAqwBXAKQAXwFvAC4BQQCyAHMAQwFIAMAAZQCzAF0ASQDBAJcAUQE1AY8AEgFFAEQBpQCWAGEAUgFuADYBSgERAUQAawCvAPUAcgBPAHEAvQD2AAMBrgBHALkAYABYAWQAQgFTAE4BPAFNAfwAoQBcAZMAUgANAegABAE0AWEBWwGjAOcAMgFAAbwADgGSALEACgFeAQABVQCVAHQAvwCgAO4AAgFQATEB/wBYAOAAYwBTAeYA5ADjABAB8gDxAD8B6QA3AWYASgC0ABMBQgDCAJgARQGsAPcA9AAFAXUAngCmAGIBSwCQAGwAOAFeALoALwFQAOoAWQDDAHAAVAG1AFkBPQFGARQB7wCnAHYAOQFGAGMBRwH9AL4AsAAPAWgAYgCZAGcAWgBMAAsBFQH4AOEABgG2AFQAmgDrAE8BqABLAcQAVQH5AKIAMwGUAF0BBwFBAQEB8wDlAGQBnwB3AEMAuwCtAJEA8ABNADABTAE6AVYBbQD+AFEAFgFpAFsAWgE+AbcA+gDFAEgBXwCbAKkADAHiAOwACAEAAAQABgCBANcAMAGGAQcABQADAC8AMAAxADIAMwDeAN8A4ADhAOIAggDYADEBhwGHAN0ANgGMAYQA2gAzAYkBhQDbADQBigGIADcBhgDcADUBiwGDANkAMgGIATQAAgABAIkAOAHjABMAFQAMABEAEgAUABAAGQANAAoADgAYABcAFgAaAAgADwA1AOQAHwCKADkBCQAhAAsAiwA6ATYA5QAcABsAjAA7ASIAIwAdAC4AIAAeADcA5gAlACQAJwAmACgAjQA8ASkAKgArACwALQA4AI4A5wA9AT8ASQBcAFQBUgBEAZUAYQGfAE4BpQBSAbIAowD+AE0AqAABAZkAVwE5APgA7gBPAPwApgBDAFAAyQBlAAsBjwCkAFUB/wBTAbsAeAE+AU4ASAFqAXMA6ADyAP0AIgEUAT4AOgCeAEQAXQCzAD8BlACpAJoASACBAUkBTQFYAWYAUwCQAOkAQwF8APMAwABiAe0AQAD3AMoA0QCWAHQATwEMAe8AKwG8AMQAKgFeAMMAAgF7AGsBgAFtAEUBcwGqAHIBVABuACcBtABKANIAvwBqACMBzQBvAX0BeQHOAGMBegB3AHgAfwGgAGkAbAAVAXwBJgEcAR0BWQHQAA0B+QBuAYIBLAEpAQMBfQBxAcUAYQDCAB4B0wAZARgBtwB0AVcAmwAbATsAXAFHAbgATABvAEoBywBdAUUAYgCYAJEAvQBCAEABUQGtAGYB+wDGAK4ABwEGAX4A8QDBAFgAhAF1AF8AgwFwAGcBHwH0AGcAEAEtAasAogDqABEBfwB1AbUAJAFVAHoBLgF5AGsAbAFaAWQB1AAWAdUAQQB+ASABzwBxAK8AYwAoAXYBcAHHAAQBuQBQAUsBoQAOAQgB+gDwAEsAXgGXADwAWQBBAZwAEgFoAUYBRgAaAacAkgBgAVEAWwCFAQoB9QCxAOsAvgAAAcwAVgGAAHYALwFoAHsBtgByAHcByABgACUBrADWAG0BFwFWACEBXwFbAWUBBQG6ALAADwFaAGQAkwBCARMBaQFHAEwBPQAJAZ0A9gDsAAAABAAGAJEA9wBgAcYBBwAFAAMALwAwADEAMgAzAP4A/wAAAQEBAgGSAPgAYQHHAZcA/QBmAcwBlAD6AGMByQGVAPsAZAHKAZgAZwGWAPwAZQHLAZMA+QBiAcgBNAACAAEAmQBoAQMBEwAVAAwAEQASABQAEAAZAA0ACgAOABgAFwAWABoACAAPADUABAEfAJoAaQEJACEACwCbAGoBNgAFARwAGwCcAGsBIgAjAB0ALgAgAB4ANwAGASUAJAAnACYAKACdAGwBKQAqACsALAAtADgAngAHAW0BtQDAAKoATwA5AI8BWgCfACkBeQFuARMBRAC3AIQBHgHCACsBXABGALYAkQGsADsAWwA6AJABcAGhAFEAoAAIAasAUACFAYYBegF7AcEAKgFFAAoBCQFvARUBIAEUAR8BuAA8AMMAUgBdAEcAcQGSAa0AogC8ASwBhwFiAEwAFgE9AAsBdgGHAJsBpwBmAHwByABXALIAQQBeAMwAfABIAFYBvQAxAX0BjAGxAS0B4gCXASEB7QBxANcAuQCAADUBkwF0AEABxABLAXIBpgGuAEAAiAFTAKkB2wCGALwAsAFwAKsBiwAXAaMAtAHQAL8B2gDsAOUAYQAmAYEB5gCmAAwBsQC7AeEAqgFlABABigB/ACIBdQBbAccAngFfAIwA8ACaAYsB0QCBABsBWgFpAPEAtQFWADQBwAHLAFkBugBrANwAnwFOAT8BagA5AXYAewBJAM8ApQHWAIABdQG2AT4AcwFVAUsAwQGoAEMBpADyAKABRAEwAcUATwGUAQ8BPwC/AEUBYACpAOcAGAE4AbsAlgFUAMkAZABDAH4BrwBQAcoASgENAYkBeAF/ASUBMwGZAbMAHQE6AS4BdAGOAb4AtABZAGMAZwDoAE4AWABNAIgAgwGlAMYAigF9ALAArAFKAHcB7gDjAEIAEQEaAY0AMgGcAXIAVQCCAFwBdwAjASgBggHpAI0BLwGVARwBvQGnAd0A0gDNAMIBbAASAbIB2ABXAVEBjgDzAEEBmAHDATYBJAF4AG0AGQG3AQ4BrQFMAScBogHTADsB3gBGAYMArgH0AEcBXQGhATwBjwBSAbgB6gBuANQAxAH1AHkAowFeAd8AhAC5AUgBnQE9AVMBfgBoAIkAvgFYAe8AswFzAE0BzgBCAdkA5ACoAcUBNwFfAW8AugHgANUAegCvAVQB6wD2AIUAkACkAUkBPgEAAAQABgCRAPsAaAHSAQcABQADAC8AMAAxADIAMwAGAQcBCAEJAQoBkgD8AGkB0wGXAAEBbgHYAZQA/gBrAdUBlQD/AGwB1gGcAHMBlgAAAW0B1wGTAP0AagHUATQAAgABAJ0AdAELARMAFQAMABEAEgAUABAAGQANAAoADgAYABcAFgAaAAgADwA1AAwBHwCYAJkAmgCbAAIBAwEEAQUBbwFwAXEBcgHZAdoB2wHcAZ4AdQEJACEACwCfAHYBNgANARwAGwCgAHcBIgAjAB0ALgAgAB4ANwAOASUAJAAnACYAKAChAHgBKQAqACsALAAtADgAogAPAXkBuQDEAK4ATwA5AJsBWgCjADEBhQF6ARsBRAC7AJABJgHGADMBXABGALoAnQGwADsAWwA6AJwBfAGlAFEApAAQAa8AUACRAZIBhgGHAcUAMgFFABIBEQF7AR0BKAEcAScBvAA8AMcAUgBdAEcAfQGeAbEApgDIATQBkwFiAEwAHgE9ABMBggGHAKcBqwBmAIgBzABXALYAQQBeANAAfABIAF4BwQA5AYkB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";
+  var tempDoublePtr = STATICTOP;
+  STATICTOP += 16;
+  assert(tempDoublePtr % 8 == 0);
+  function ___lock() {
+  }
+  var SYSCALLS = { varargs: 0, get: function(varargs) {
+    SYSCALLS.varargs += 4;
+    var ret = HEAP32[SYSCALLS.varargs - 4 >> 2];
+    return ret;
+  }, getStr: function() {
+    var ret = Pointer_stringify(SYSCALLS.get());
+    return ret;
+  }, get64: function() {
+    var low = SYSCALLS.get(), high = SYSCALLS.get();
+    if (low >= 0)
+      assert(high === 0);
+    else
+      assert(high === -1);
+    return low;
+  }, getZero: function() {
+    assert(SYSCALLS.get() === 0);
+  } };
+  function ___syscall140(which, varargs) {
+    SYSCALLS.varargs = varargs;
+    try {
+      var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
+      var offset = offset_low;
+      FS.llseek(stream, offset, whence);
+      HEAP32[result >> 2] = stream.position;
+      if (stream.getdents && offset === 0 && whence === 0)
+        stream.getdents = null;
+      return 0;
+    } catch (e) {
+      if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+        abort(e);
+      return -e.errno;
+    }
+  }
+  function flush_NO_FILESYSTEM() {
+    var fflush = Module2["_fflush"];
+    if (fflush)
+      fflush(0);
+    var printChar = ___syscall146.printChar;
+    if (!printChar)
+      return;
+    var buffers = ___syscall146.buffers;
+    if (buffers[1].length)
+      printChar(1, 10);
+    if (buffers[2].length)
+      printChar(2, 10);
+  }
+  function ___syscall146(which, varargs) {
+    SYSCALLS.varargs = varargs;
+    try {
+      var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
+      var ret = 0;
+      if (!___syscall146.buffers) {
+        ___syscall146.buffers = [null, [], []];
+        ___syscall146.printChar = function(stream2, curr) {
+          var buffer2 = ___syscall146.buffers[stream2];
+          assert(buffer2);
+          if (curr === 0 || curr === 10) {
+            (stream2 === 1 ? Module2["print"] : Module2["printErr"])(UTF8ArrayToString(buffer2, 0));
+            buffer2.length = 0;
+          } else {
+            buffer2.push(curr);
+          }
+        };
+      }
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = HEAP32[iov + i * 8 >> 2];
+        var len = HEAP32[iov + (i * 8 + 4) >> 2];
+        for (var j = 0; j < len; j++) {
+          ___syscall146.printChar(stream, HEAPU8[ptr + j]);
+        }
+        ret += len;
+      }
+      return ret;
+    } catch (e) {
+      if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+        abort(e);
+      return -e.errno;
+    }
+  }
+  function ___syscall54(which, varargs) {
+    SYSCALLS.varargs = varargs;
+    try {
+      return 0;
+    } catch (e) {
+      if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+        abort(e);
+      return -e.errno;
+    }
+  }
+  function ___syscall6(which, varargs) {
+    SYSCALLS.varargs = varargs;
+    try {
+      var stream = SYSCALLS.getStreamFromFD();
+      FS.close(stream);
+      return 0;
+    } catch (e) {
+      if (typeof FS === "undefined" || !(e instanceof FS.ErrnoError))
+        abort(e);
+      return -e.errno;
+    }
+  }
+  function ___unlock() {
+  }
+  function _emscripten_memcpy_big(dest, src, num) {
+    HEAPU8.set(HEAPU8.subarray(src, src + num), dest);
+    return dest;
+  }
+  function ___setErrNo(value) {
+    if (Module2["___errno_location"])
+      HEAP32[Module2["___errno_location"]() >> 2] = value;
+    else
+      Module2.printErr("failed to set errno from JS");
+    return value;
+  }
+  DYNAMICTOP_PTR = staticAlloc(4);
+  STACK_BASE = STACKTOP = alignMemory(STATICTOP);
+  STACK_MAX = STACK_BASE + TOTAL_STACK;
+  DYNAMIC_BASE = alignMemory(STACK_MAX);
+  HEAP32[DYNAMICTOP_PTR >> 2] = DYNAMIC_BASE;
+  staticSealed = true;
+  assert(DYNAMIC_BASE < TOTAL_MEMORY, "TOTAL_MEMORY not big enough for stack");
+  var ASSERTIONS = true;
+  function intArrayToString(array) {
+    var ret = [];
+    for (var i = 0; i < array.length; i++) {
+      var chr = array[i];
+      if (chr > 255) {
+        if (ASSERTIONS) {
+          assert(false, "Character code " + chr + " (" + String.fromCharCode(chr) + ")  at offset " + i + " not in 0x00-0xFF.");
+        }
+        chr &= 255;
+      }
+      ret.push(String.fromCharCode(chr));
+    }
+    return ret.join("");
+  }
+  var decodeBase64 = typeof atob === "function" ? atob : function(input) {
+    var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    var output = "";
+    var chr1, chr2, chr3;
+    var enc1, enc2, enc3, enc4;
+    var i = 0;
+    input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+    do {
+      enc1 = keyStr.indexOf(input.charAt(i++));
+      enc2 = keyStr.indexOf(input.charAt(i++));
+      enc3 = keyStr.indexOf(input.charAt(i++));
+      enc4 = keyStr.indexOf(input.charAt(i++));
+      chr1 = enc1 << 2 | enc2 >> 4;
+      chr2 = (enc2 & 15) << 4 | enc3 >> 2;
+      chr3 = (enc3 & 3) << 6 | enc4;
+      output = output + String.fromCharCode(chr1);
+      if (enc3 !== 64) {
+        output = output + String.fromCharCode(chr2);
+      }
+      if (enc4 !== 64) {
+        output = output + String.fromCharCode(chr3);
+      }
+    } while (i < input.length);
+    return output;
+  };
+  function intArrayFromBase64(s) {
+    if (typeof ENVIRONMENT_IS_NODE === "boolean" && ENVIRONMENT_IS_NODE) {
+      var buf;
+      try {
+        buf = Buffer.from(s, "base64");
+      } catch (_) {
+        buf = new Buffer(s, "base64");
+      }
+      return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+    }
+    try {
+      var decoded = decodeBase64(s);
+      var bytes = new Uint8Array(decoded.length);
+      for (var i = 0; i < decoded.length; ++i) {
+        bytes[i] = decoded.charCodeAt(i);
+      }
+      return bytes;
+    } catch (_) {
+      throw new Error("Converting base64 string to bytes failed.");
+    }
+  }
+  function tryParseAsDataURI(filename) {
+    if (!isDataURI(filename)) {
+      return;
+    }
+    return intArrayFromBase64(filename.slice(dataURIPrefix.length));
+  }
+  function nullFunc_ii(x) {
+    Module2["printErr"]("Invalid function pointer called with signature 'ii'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");
+    Module2["printErr"]("Build with ASSERTIONS=2 for more info.");
+    abort(x);
+  }
+  function nullFunc_iiii(x) {
+    Module2["printErr"]("Invalid function pointer called with signature 'iiii'. Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? Or calling a function with an incorrect type, which will fail? (it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)");
+    Module2["printErr"]("Build with ASSERTIONS=2 for more info.");
+    abort(x);
+  }
+  function invoke_ii(index, a1) {
+    try {
+      return Module2["dynCall_ii"](index, a1);
+    } catch (e) {
+      if (typeof e !== "number" && e !== "longjmp")
+        throw e;
+      Module2["setThrew"](1, 0);
+    }
+  }
+  function invoke_iiii(index, a1, a2, a3) {
+    try {
+      return Module2["dynCall_iiii"](index, a1, a2, a3);
+    } catch (e) {
+      if (typeof e !== "number" && e !== "longjmp")
+        throw e;
+      Module2["setThrew"](1, 0);
+    }
+  }
+  Module2.asmGlobalArg = { "Math": Math, "Int8Array": Int8Array, "Int16Array": Int16Array, "Int32Array": Int32Array, "Uint8Array": Uint8Array, "Uint16Array": Uint16Array, "Uint32Array": Uint32Array, "Float32Array": Float32Array, "Float64Array": Float64Array, "NaN": NaN, "Infinity": Infinity };
+  Module2.asmLibraryArg = { "abort": abort, "assert": assert, "enlargeMemory": enlargeMemory, "getTotalMemory": getTotalMemory, "abortOnCannotGrowMemory": abortOnCannotGrowMemory, "abortStackOverflow": abortStackOverflow, "nullFunc_ii": nullFunc_ii, "nullFunc_iiii": nullFunc_iiii, "invoke_ii": invoke_ii, "invoke_iiii": invoke_iiii, "___lock": ___lock, "___setErrNo": ___setErrNo, "___syscall140": ___syscall140, "___syscall146": ___syscall146, "___syscall54": ___syscall54, "___syscall6": ___syscall6, "___unlock": ___unlock, "_emscripten_memcpy_big": _emscripten_memcpy_big, "flush_NO_FILESYSTEM": flush_NO_FILESYSTEM, "DYNAMICTOP_PTR": DYNAMICTOP_PTR, "tempDoublePtr": tempDoublePtr, "ABORT": ABORT, "STACKTOP": STACKTOP, "STACK_MAX": STACK_MAX };
+  var asm = function(global, env, buffer2) {
+    var a = new global.Int8Array(buffer2);
+    var b = new global.Int16Array(buffer2);
+    var c = new global.Int32Array(buffer2);
+    var d = new global.Uint8Array(buffer2);
+    var e = new global.Uint16Array(buffer2);
+    new global.Uint32Array(buffer2);
+    new global.Float32Array(buffer2);
+    new global.Float64Array(buffer2);
+    var i = env.DYNAMICTOP_PTR | 0;
+    env.tempDoublePtr | 0;
+    env.ABORT | 0;
+    var l = env.STACKTOP | 0;
+    var m = env.STACK_MAX | 0;
+    global.NaN; global.Infinity;
+    var y = 0;
+    global.Math.floor;
+    global.Math.abs;
+    global.Math.sqrt;
+    global.Math.pow;
+    global.Math.cos;
+    global.Math.sin;
+    global.Math.tan;
+    global.Math.acos;
+    global.Math.asin;
+    global.Math.atan;
+    global.Math.atan2;
+    global.Math.exp;
+    global.Math.log;
+    global.Math.ceil;
+    var N = global.Math.imul;
+    global.Math.min;
+    global.Math.max;
+    global.Math.clz32;
+    env.abort;
+    env.assert;
+    var T = env.enlargeMemory;
+    var U = env.getTotalMemory;
+    var V = env.abortOnCannotGrowMemory;
+    var W = env.abortStackOverflow;
+    var X = env.nullFunc_ii;
+    var Y = env.nullFunc_iiii;
+    env.invoke_ii;
+    env.invoke_iiii;
+    var $ = env.___lock;
+    var aa = env.___setErrNo;
+    var ba = env.___syscall140;
+    var ca = env.___syscall146;
+    var da = env.___syscall54;
+    var ea = env.___syscall6;
+    var fa = env.___unlock;
+    var ga = env._emscripten_memcpy_big;
+    env.flush_NO_FILESYSTEM;
+    function la(a2) {
+      a2 = a2 | 0;
+      var b2 = 0;
+      b2 = l;
+      l = l + a2 | 0;
+      l = l + 15 & -16;
+      if ((l | 0) >= (m | 0))
+        W(a2 | 0);
+      return b2 | 0;
+    }
+    function ma() {
+      return l | 0;
+    }
+    function na(a2) {
+      a2 = a2 | 0;
+      l = a2;
+    }
+    function oa(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      l = a2;
+      m = b2;
+    }
+    function pa(a2, b2) {
+    }
+    function qa(a2) {
+      a2 = a2 | 0;
+      y = a2;
+    }
+    function ra() {
+      return y | 0;
+    }
+    function sa() {
+      var a2 = 0, d2 = 0, e2 = 0;
+      a2 = Mb(44) | 0;
+      d2 = a2;
+      e2 = d2 + 44 | 0;
+      do {
+        c[d2 >> 2] = 0;
+        d2 = d2 + 4 | 0;
+      } while ((d2 | 0) < (e2 | 0));
+      c[a2 + 16 >> 2] = Mb(954) | 0;
+      b[a2 + 32 >> 1] = 0;
+      b[a2 + 34 >> 1] = 1;
+      b[a2 + 28 >> 1] = 0;
+      b[a2 + 38 >> 1] = 0;
+      b[a2 + 40 >> 1] = 0;
+      e2 = Mb(qb() | 0) | 0;
+      c[a2 + 4 >> 2] = e2;
+      ob(a2, e2, a2 + 8 | 0);
+      return a2 | 0;
+    }
+    function ta(a2) {
+      a2 = a2 | 0;
+      Nb(c[a2 + 4 >> 2] | 0);
+      Nb(c[a2 + 16 >> 2] | 0);
+      Nb(a2);
+      return;
+    }
+    function ua(e2, f2, g2, h2) {
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      var i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0;
+      q2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      j2 = q2;
+      p2 = e2 + 26 | 0;
+      b[p2 >> 1] = (h2 | 0) == 0 ? (d[f2 >> 0] | 0) >>> 3 & 15 : 15;
+      a[e2 + 24 >> 0] = 1;
+      o2 = e2 + 16 | 0;
+      i2 = e2 + 30 | 0;
+      eb(f2 + 1 | 0, c[o2 >> 2] | 0, i2, p2, 1, e2 + 38 | 0);
+      a:
+        do
+          switch (b[i2 >> 1] | 0) {
+            case 2:
+            case 7: {
+              b[p2 >> 1] = b[e2 + 28 >> 1] | 0;
+              h2 = 0;
+              k2 = 6;
+              break;
+            }
+            default: {
+              h2 = b[p2 >> 1] | 0;
+              b[e2 + 28 >> 1] = h2;
+              if ((b[e2 + 34 >> 1] | 0) == 1) {
+                h2 = Wa(c[o2 >> 2] | 0, h2) | 0;
+                k2 = 6;
+                break a;
+              } else {
+                h2 = e2 + 32 | 0;
+                n2 = h2;
+                h2 = b[h2 >> 1] | 0;
+                break a;
+              }
+            }
+          }
+        while (0);
+      if ((k2 | 0) == 6) {
+        n2 = e2 + 32 | 0;
+        b[n2 >> 1] = h2;
+      }
+      if (h2 << 16 >> 16 != 0 ? (b[e2 + 34 >> 1] | 0) != 0 : 0) {
+        h2 = 0;
+        do {
+          b[g2 + (h2 << 1) >> 1] = 8;
+          h2 = h2 + 1 | 0;
+        } while ((h2 | 0) != 320);
+        h2 = 0;
+      } else {
+        b[e2 + 36 >> 1] = rb(b[p2 >> 1] | 0, c[o2 >> 2] | 0, g2, j2, c[e2 >> 2] | 0, b[i2 >> 1] | 0, c[e2 + 8 >> 2] | 0) | 0;
+        h2 = 0;
+      }
+      do {
+        k2 = g2 + (h2 << 1) | 0;
+        b[k2 >> 1] = b[k2 >> 1] & -4;
+        h2 = h2 + 1 | 0;
+      } while ((h2 | 0) != 320);
+      f2 = e2 + 34 | 0;
+      if (!(b[f2 >> 1] | 0)) {
+        h2 = Va(c[o2 >> 2] | 0, b[p2 >> 1] | 0) | 0;
+        b[n2 >> 1] = h2;
+      } else
+        h2 = b[n2 >> 1] | 0;
+      if (!(h2 << 16 >> 16)) {
+        e2 = 0;
+        b[f2 >> 1] = e2;
+        l = q2;
+        return;
+      }
+      pb(c[e2 >> 2] | 0, 1);
+      e2 = b[n2 >> 1] | 0;
+      b[f2 >> 1] = e2;
+      l = q2;
+      return;
+    }
+    function va(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0;
+      e2 = b[c2 >> 1] >> 2 << 16 >> 16;
+      e2 = N(e2 << 1, e2) | 0;
+      j2 = d2 << 16 >> 16 > 1;
+      if (j2) {
+        g2 = d2 & 65535;
+        f2 = 1;
+        do {
+          h2 = b[c2 + (f2 << 1) >> 1] >> 2 << 16 >> 16;
+          h2 = N(h2, h2) | 0;
+          h2 = (h2 | 0) == 1073741824 ? 2147483647 : h2 << 1;
+          i2 = h2 + e2 | 0;
+          e2 = (h2 ^ e2 | 0) > -1 & (i2 ^ e2 | 0) < 0 ? e2 >> 31 ^ 2147483647 : i2;
+          f2 = f2 + 1 | 0;
+        } while ((f2 | 0) != (g2 | 0));
+      }
+      if (!e2)
+        return;
+      i2 = (((gb(e2) | 0) & 65535) << 16) + -65536 >> 16;
+      h2 = e2 << i2;
+      h2 = (h2 | 0) == 2147483647 ? 32767 : (h2 + 32768 | 0) >>> 16 & 65535;
+      e2 = b[a2 >> 1] >> 2 << 16 >> 16;
+      e2 = N(e2, e2) | 0;
+      e2 = (e2 | 0) == 1073741824 ? 2147483647 : e2 << 1;
+      if (j2) {
+        g2 = d2 & 65535;
+        f2 = 1;
+        do {
+          k2 = b[a2 + (f2 << 1) >> 1] >> 2 << 16 >> 16;
+          k2 = N(k2, k2) | 0;
+          k2 = (k2 | 0) == 1073741824 ? 2147483647 : k2 << 1;
+          j2 = k2 + e2 | 0;
+          e2 = (k2 ^ e2 | 0) > -1 & (j2 ^ e2 | 0) < 0 ? e2 >> 31 ^ 2147483647 : j2;
+          f2 = f2 + 1 | 0;
+        } while ((f2 | 0) != (g2 | 0));
+      }
+      if (!e2)
+        g2 = 0;
+      else {
+        k2 = (gb(e2) | 0) << 16 >> 16;
+        e2 = e2 << k2;
+        k2 = i2 - k2 | 0;
+        e2 = (ub(h2, (e2 | 0) == 2147483647 ? 32767 : (e2 + 32768 | 0) >>> 16 & 65535) | 0) << 16 >> 16;
+        f2 = e2 << 7;
+        g2 = k2 << 16 >> 16;
+        if ((k2 & 65535) << 16 >> 16 > -1)
+          e2 = f2 >> (g2 & 31);
+        else {
+          a2 = 0 - g2 & 31;
+          k2 = f2 << a2;
+          e2 = (k2 >> a2 | 0) == (f2 | 0) ? k2 : e2 >> 24 ^ 2147483647;
+        }
+        g2 = vb(e2) | 0;
+        k2 = g2 << 9;
+        g2 = (k2 >> 9 | 0) == (g2 | 0) ? k2 : g2 >> 31 ^ 2147483647;
+        g2 = (g2 | 0) == 2147483647 ? 32767 : g2 + 32768 >> 16;
+      }
+      if (d2 << 16 >> 16 <= 0)
+        return;
+      f2 = d2 & 65535;
+      e2 = 0;
+      do {
+        k2 = c2 + (e2 << 1) | 0;
+        d2 = N(g2, b[k2 >> 1] | 0) | 0;
+        a2 = d2 << 3;
+        b[k2 >> 1] = ((a2 >> 3 | 0) == (d2 | 0) ? a2 : d2 >> 31 ^ 2147418112) >>> 16;
+        e2 = e2 + 1 | 0;
+      } while ((e2 | 0) != (f2 | 0));
+      return;
+    }
+    function wa(b2) {
+      b2 = b2 | 0;
+      var c2 = 0;
+      c2 = b2 + 60 | 0;
+      do {
+        a[b2 >> 0] = 0;
+        b2 = b2 + 1 | 0;
+      } while ((b2 | 0) < (c2 | 0));
+      return;
+    }
+    function xa(c2, d2, e2, f2) {
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      var g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0;
+      g2 = f2;
+      h2 = e2;
+      i2 = g2 + 60 | 0;
+      do {
+        a[g2 >> 0] = a[h2 >> 0] | 0;
+        g2 = g2 + 1 | 0;
+        h2 = h2 + 1 | 0;
+      } while ((g2 | 0) < (i2 | 0));
+      s2 = d2 << 16 >> 16;
+      t2 = s2 >> 2;
+      if ((t2 | 0) > 0) {
+        d2 = 0;
+        r2 = 0;
+      } else {
+        h2 = f2 + (s2 << 1) | 0;
+        g2 = e2;
+        i2 = g2 + 60 | 0;
+        do {
+          a[g2 >> 0] = a[h2 >> 0] | 0;
+          g2 = g2 + 1 | 0;
+          h2 = h2 + 1 | 0;
+        } while ((g2 | 0) < (i2 | 0));
+        return;
+      }
+      while (1) {
+        q2 = r2 << 16 >> 16 << 2;
+        o2 = b[c2 >> 1] >> 2;
+        j2 = d2 << 2;
+        b[f2 + (j2 + 30 << 1) >> 1] = o2;
+        k2 = c2 + 2 | 0;
+        i2 = b[k2 >> 1] >> 2;
+        b[f2 + (j2 + 31 << 1) >> 1] = i2;
+        l2 = c2 + 4 | 0;
+        h2 = b[l2 >> 1] >> 2;
+        b[f2 + (j2 + 32 << 1) >> 1] = h2;
+        m2 = c2 + 6 | 0;
+        g2 = b[m2 >> 1] >> 2;
+        b[f2 + (j2 + 33 << 1) >> 1] = g2;
+        n2 = j2 | 1;
+        p2 = b[f2 + (n2 << 1) >> 1] | 0;
+        d2 = 16384 - (o2 << 16 >> 16 << 5) - (b[f2 + (j2 << 1) >> 1] << 5) | 0;
+        g2 = 16384 - (g2 << 16 >> 16 << 5) - (b[f2 + ((j2 | 3) << 1) >> 1] << 5) | 0;
+        h2 = 16384 - (h2 << 16 >> 16 << 5) - (b[f2 + ((j2 | 2) << 1) >> 1] << 5) | 0;
+        i2 = 16384 - (i2 << 16 >> 16 << 5) - (p2 << 16 >> 16 << 5) | 0;
+        o2 = 1;
+        do {
+          z2 = b[240 + (o2 << 1) >> 1] | 0;
+          B2 = (N(z2, p2 << 16 >> 16) | 0) + d2 | 0;
+          y2 = b[f2 + (n2 + 1 << 1) >> 1] | 0;
+          A2 = (N(z2, y2) | 0) + i2 | 0;
+          x2 = b[240 + (o2 + 1 << 1) >> 1] | 0;
+          y2 = B2 + (N(x2, y2) | 0) | 0;
+          B2 = b[f2 + (n2 + 2 << 1) >> 1] | 0;
+          A2 = A2 + (N(x2, B2) | 0) | 0;
+          w2 = (N(z2, B2) | 0) + h2 | 0;
+          v2 = b[240 + (o2 + 2 << 1) >> 1] | 0;
+          B2 = y2 + (N(v2, B2) | 0) | 0;
+          y2 = b[f2 + (n2 + 3 << 1) >> 1] | 0;
+          A2 = A2 + (N(y2, v2) | 0) | 0;
+          z2 = (N(y2, z2) | 0) + g2 | 0;
+          w2 = w2 + (N(y2, x2) | 0) | 0;
+          u2 = b[240 + (o2 + 3 << 1) >> 1] | 0;
+          d2 = B2 + (N(u2, y2) | 0) | 0;
+          y2 = b[f2 + (n2 + 4 << 1) >> 1] | 0;
+          i2 = A2 + (N(u2, y2) | 0) | 0;
+          x2 = z2 + (N(y2, x2) | 0) | 0;
+          y2 = w2 + (N(y2, v2) | 0) | 0;
+          w2 = b[f2 + (n2 + 5 << 1) >> 1] | 0;
+          h2 = y2 + (N(w2, u2) | 0) | 0;
+          g2 = x2 + (N(w2, v2) | 0) + (N(b[f2 + (n2 + 6 << 1) >> 1] | 0, u2) | 0) | 0;
+          u2 = (o2 << 16) + 262144 | 0;
+          o2 = u2 >> 16;
+          n2 = o2 + j2 | 0;
+          p2 = b[f2 + (n2 << 1) >> 1] | 0;
+        } while ((u2 | 0) < 1900544);
+        z2 = ((b[f2 + (q2 + 30 << 1) >> 1] | 0) * 47 | 0) + i2 | 0;
+        A2 = ((b[f2 + (q2 + 31 << 1) >> 1] | 0) * 47 | 0) + h2 | 0;
+        B2 = ((b[f2 + (q2 + 32 << 1) >> 1] | 0) * 47 | 0) + g2 | 0;
+        b[c2 >> 1] = (((p2 << 16 >> 16) * 47 | 0) + d2 | 0) >>> 15;
+        b[k2 >> 1] = z2 >>> 15;
+        b[l2 >> 1] = A2 >>> 15;
+        b[m2 >> 1] = B2 >>> 15;
+        r2 = r2 + 1 << 16 >> 16;
+        d2 = r2 << 16 >> 16;
+        if ((t2 | 0) <= (d2 | 0))
+          break;
+        else
+          c2 = c2 + 8 | 0;
+      }
+      h2 = f2 + (s2 << 1) | 0;
+      g2 = e2;
+      i2 = g2 + 60 | 0;
+      do {
+        a[g2 >> 0] = a[h2 >> 0] | 0;
+        g2 = g2 + 1 | 0;
+        h2 = h2 + 1 | 0;
+      } while ((g2 | 0) < (i2 | 0));
+      return;
+    }
+    function ya(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      var d2 = 0, e2 = 0;
+      d2 = c2;
+      e2 = d2 + 128 | 0;
+      do {
+        b[d2 >> 1] = 0;
+        d2 = d2 + 2 | 0;
+      } while ((d2 | 0) < (e2 | 0));
+      e2 = a2 << 16 >> 16;
+      b[c2 + ((e2 >>> 5 & 62) << 1) >> 1] = ((e2 & 2048) >>> 1 ^ 1024) + -512 << 16 >> 16;
+      b[c2 + ((e2 << 1 & 62 | 1) << 1) >> 1] = ((e2 & 32) << 5 & 65535 ^ 1024) + -512 << 16 >> 16;
+      return;
+    }
+    function za(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0;
+      n2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      k2 = n2;
+      f2 = d2;
+      g2 = f2 + 128 | 0;
+      do {
+        b[f2 >> 1] = 0;
+        f2 = f2 + 2 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      switch (c2 << 16 >> 16 | 0) {
+        case 20: {
+          Aa(b[a2 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          j2 = d2 + ((i2 << 2 & 60) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          Aa(b[a2 + 2 >> 1] | 0, 4, 0, k2);
+          j2 = b[k2 >> 1] | 0;
+          i2 = d2 + ((j2 << 2 & 60 | 1) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (j2 << 6 & 1024 ^ 1024);
+          Aa(b[a2 + 4 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          j2 = d2 + ((i2 << 2 & 60 | 2) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          Aa(b[a2 + 6 >> 1] | 0, 4, 0, k2);
+          a2 = b[k2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          l = n2;
+          return;
+        }
+        case 36: {
+          Ba(b[a2 >> 1] | 0, 4, 0, k2);
+          h2 = b[k2 >> 1] | 0;
+          j2 = d2 + ((h2 << 2 & 60) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          j2 = k2 + 2 | 0;
+          h2 = b[j2 >> 1] | 0;
+          i2 = d2 + ((h2 << 2 & 60) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ba(b[a2 + 2 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          h2 = d2 + ((i2 << 2 & 60 | 1) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          h2 = b[j2 >> 1] | 0;
+          i2 = d2 + ((h2 << 2 & 60 | 1) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ba(b[a2 + 4 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          h2 = d2 + ((i2 << 2 & 60 | 2) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          h2 = b[j2 >> 1] | 0;
+          i2 = d2 + ((h2 << 2 & 60 | 2) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ba(b[a2 + 6 >> 1] | 0, 4, 0, k2);
+          k2 = b[k2 >> 1] | 0;
+          a2 = d2 + ((k2 << 2 & 60 | 3) << 1) | 0;
+          b[a2 >> 1] = (e[a2 >> 1] | 0) + 65024 + (k2 << 6 & 1024 ^ 1024);
+          a2 = b[j2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          l = n2;
+          return;
+        }
+        case 44: {
+          Ca(b[a2 >> 1] | 0, 4, 0, k2);
+          g2 = b[k2 >> 1] | 0;
+          j2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          j2 = k2 + 2 | 0;
+          g2 = b[j2 >> 1] | 0;
+          h2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          h2 = k2 + 4 | 0;
+          g2 = b[h2 >> 1] | 0;
+          i2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          Ca(b[a2 + 2 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          g2 = d2 + ((i2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          g2 = b[j2 >> 1] | 0;
+          i2 = d2 + ((g2 << 2 & 60 | 1) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          h2 = b[h2 >> 1] | 0;
+          i2 = d2 + ((h2 << 2 & 60 | 1) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ba(b[a2 + 4 >> 1] | 0, 4, 0, k2);
+          i2 = b[k2 >> 1] | 0;
+          h2 = d2 + ((i2 << 2 & 60 | 2) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+          h2 = b[j2 >> 1] | 0;
+          i2 = d2 + ((h2 << 2 & 60 | 2) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ba(b[a2 + 6 >> 1] | 0, 4, 0, k2);
+          k2 = b[k2 >> 1] | 0;
+          a2 = d2 + ((k2 << 2 & 60 | 3) << 1) | 0;
+          b[a2 >> 1] = (e[a2 >> 1] | 0) + 65024 + (k2 << 6 & 1024 ^ 1024);
+          a2 = b[j2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          l = n2;
+          return;
+        }
+        case 52: {
+          Ca(b[a2 >> 1] | 0, 4, 0, k2);
+          g2 = b[k2 >> 1] | 0;
+          i2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          i2 = k2 + 2 | 0;
+          g2 = b[i2 >> 1] | 0;
+          j2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          j2 = k2 + 4 | 0;
+          g2 = b[j2 >> 1] | 0;
+          h2 = d2 + ((g2 << 2 & 60) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          Ca(b[a2 + 2 >> 1] | 0, 4, 0, k2);
+          h2 = b[k2 >> 1] | 0;
+          g2 = d2 + ((h2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          g2 = b[i2 >> 1] | 0;
+          h2 = d2 + ((g2 << 2 & 60 | 1) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          h2 = b[j2 >> 1] | 0;
+          g2 = d2 + ((h2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          Ca(b[a2 + 4 >> 1] | 0, 4, 0, k2);
+          g2 = b[k2 >> 1] | 0;
+          h2 = d2 + ((g2 << 2 & 60 | 2) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          h2 = b[i2 >> 1] | 0;
+          g2 = d2 + ((h2 << 2 & 60 | 2) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (h2 << 6 & 1024 ^ 1024);
+          g2 = b[j2 >> 1] | 0;
+          h2 = d2 + ((g2 << 2 & 60 | 2) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          Ca(b[a2 + 6 >> 1] | 0, 4, 0, k2);
+          a2 = b[k2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          k2 = b[i2 >> 1] | 0;
+          a2 = d2 + ((k2 << 2 & 60 | 3) << 1) | 0;
+          b[a2 >> 1] = (e[a2 >> 1] | 0) + 65024 + (k2 << 6 & 1024 ^ 1024);
+          a2 = b[j2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          l = n2;
+          return;
+        }
+        case 64: {
+          c2 = k2 + 2 | 0;
+          f2 = k2 + 4 | 0;
+          g2 = k2 + 6 | 0;
+          h2 = 0;
+          do {
+            Da((b[a2 + (h2 << 1) >> 1] << 14) + (b[a2 + (h2 + 4 << 1) >> 1] | 0) | 0, 4, 0, k2);
+            j2 = b[k2 >> 1] | 0;
+            i2 = d2 + ((j2 << 2 & 60) + h2 << 16 >> 16 << 1) | 0;
+            b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (j2 << 6 & 1024 ^ 1024);
+            i2 = b[c2 >> 1] | 0;
+            j2 = d2 + ((i2 << 2 & 60) + h2 << 16 >> 16 << 1) | 0;
+            b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+            j2 = b[f2 >> 1] | 0;
+            i2 = d2 + ((j2 << 2 & 60) + h2 << 16 >> 16 << 1) | 0;
+            b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (j2 << 6 & 1024 ^ 1024);
+            i2 = b[g2 >> 1] | 0;
+            j2 = d2 + ((i2 << 2 & 60) + h2 << 16 >> 16 << 1) | 0;
+            b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (i2 << 6 & 1024 ^ 1024);
+            h2 = h2 + 1 | 0;
+          } while ((h2 | 0) != 4);
+          l = n2;
+          return;
+        }
+        case 72: {
+          Ea((b[a2 >> 1] << 10) + (b[a2 + 8 >> 1] | 0) | 0, 4, 0, k2);
+          c2 = b[k2 >> 1] | 0;
+          h2 = d2 + ((c2 << 2 & 60) << 1) | 0;
+          b[h2 >> 1] = (e[h2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          h2 = k2 + 2 | 0;
+          c2 = b[h2 >> 1] | 0;
+          i2 = d2 + ((c2 << 2 & 60) << 1) | 0;
+          b[i2 >> 1] = (e[i2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          i2 = k2 + 4 | 0;
+          c2 = b[i2 >> 1] | 0;
+          j2 = d2 + ((c2 << 2 & 60) << 1) | 0;
+          b[j2 >> 1] = (e[j2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          j2 = k2 + 6 | 0;
+          c2 = b[j2 >> 1] | 0;
+          f2 = d2 + ((c2 << 2 & 60) << 1) | 0;
+          b[f2 >> 1] = (e[f2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          f2 = k2 + 8 | 0;
+          c2 = b[f2 >> 1] | 0;
+          g2 = d2 + ((c2 << 2 & 60) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          Ea((b[a2 + 2 >> 1] << 10) + (b[a2 + 10 >> 1] | 0) | 0, 4, 0, k2);
+          g2 = b[k2 >> 1] | 0;
+          c2 = d2 + ((g2 << 2 & 60 | 1) << 1) | 0;
+          b[c2 >> 1] = (e[c2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          c2 = b[h2 >> 1] | 0;
+          g2 = d2 + ((c2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          g2 = b[i2 >> 1] | 0;
+          c2 = d2 + ((g2 << 2 & 60 | 1) << 1) | 0;
+          b[c2 >> 1] = (e[c2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          c2 = b[j2 >> 1] | 0;
+          g2 = d2 + ((c2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (c2 << 6 & 1024 ^ 1024);
+          f2 = b[f2 >> 1] | 0;
+          g2 = d2 + ((f2 << 2 & 60 | 1) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (f2 << 6 & 1024 ^ 1024);
+          Da((b[a2 + 4 >> 1] << 14) + (b[a2 + 12 >> 1] | 0) | 0, 4, 0, k2);
+          g2 = b[k2 >> 1] | 0;
+          f2 = d2 + ((g2 << 2 & 60 | 2) << 1) | 0;
+          b[f2 >> 1] = (e[f2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          f2 = b[h2 >> 1] | 0;
+          g2 = d2 + ((f2 << 2 & 60 | 2) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (f2 << 6 & 1024 ^ 1024);
+          g2 = b[i2 >> 1] | 0;
+          f2 = d2 + ((g2 << 2 & 60 | 2) << 1) | 0;
+          b[f2 >> 1] = (e[f2 >> 1] | 0) + 65024 + (g2 << 6 & 1024 ^ 1024);
+          f2 = b[j2 >> 1] | 0;
+          g2 = d2 + ((f2 << 2 & 60 | 2) << 1) | 0;
+          b[g2 >> 1] = (e[g2 >> 1] | 0) + 65024 + (f2 << 6 & 1024 ^ 1024);
+          Da((b[a2 + 6 >> 1] << 14) + (b[a2 + 14 >> 1] | 0) | 0, 4, 0, k2);
+          k2 = b[k2 >> 1] | 0;
+          a2 = d2 + ((k2 << 2 & 60 | 3) << 1) | 0;
+          b[a2 >> 1] = (e[a2 >> 1] | 0) + 65024 + (k2 << 6 & 1024 ^ 1024);
+          a2 = b[h2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          k2 = b[i2 >> 1] | 0;
+          a2 = d2 + ((k2 << 2 & 60 | 3) << 1) | 0;
+          b[a2 >> 1] = (e[a2 >> 1] | 0) + 65024 + (k2 << 6 & 1024 ^ 1024);
+          a2 = b[j2 >> 1] | 0;
+          k2 = d2 + ((a2 << 2 & 60 | 3) << 1) | 0;
+          b[k2 >> 1] = (e[k2 >> 1] | 0) + 65024 + (a2 << 6 & 1024 ^ 1024);
+          l = n2;
+          return;
+        }
+        case 88: {
+          c2 = k2 + 2 | 0;
+          f2 = k2 + 4 | 0;
+          g2 = k2 + 6 | 0;
+          h2 = k2 + 8 | 0;
+          i2 = k2 + 10 | 0;
+          j2 = 0;
+          do {
+            Fa((b[a2 + (j2 << 1) >> 1] << 11) + (b[a2 + (j2 + 4 << 1) >> 1] | 0) | 0, 4, 0, k2);
+            o2 = b[k2 >> 1] | 0;
+            p2 = d2 + ((o2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[p2 >> 1] = (e[p2 >> 1] | 0) + 65024 + (o2 << 6 & 1024 ^ 1024);
+            p2 = b[c2 >> 1] | 0;
+            o2 = d2 + ((p2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[o2 >> 1] = (e[o2 >> 1] | 0) + 65024 + (p2 << 6 & 1024 ^ 1024);
+            o2 = b[f2 >> 1] | 0;
+            p2 = d2 + ((o2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[p2 >> 1] = (e[p2 >> 1] | 0) + 65024 + (o2 << 6 & 1024 ^ 1024);
+            p2 = b[g2 >> 1] | 0;
+            o2 = d2 + ((p2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[o2 >> 1] = (e[o2 >> 1] | 0) + 65024 + (p2 << 6 & 1024 ^ 1024);
+            o2 = b[h2 >> 1] | 0;
+            p2 = d2 + ((o2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[p2 >> 1] = (e[p2 >> 1] | 0) + 65024 + (o2 << 6 & 1024 ^ 1024);
+            p2 = b[i2 >> 1] | 0;
+            o2 = d2 + ((p2 << 2 & 60) + j2 << 16 >> 16 << 1) | 0;
+            b[o2 >> 1] = (e[o2 >> 1] | 0) + 65024 + (p2 << 6 & 1024 ^ 1024);
+            j2 = j2 + 1 | 0;
+          } while ((j2 | 0) != 4);
+          l = n2;
+          return;
+        }
+        default: {
+          l = n2;
+          return;
+        }
+      }
+    }
+    function Aa(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      c2 = 1 << (c2 << 16 >> 16);
+      d2 = (c2 + 65535 & a2) + (d2 & 65535) | 0;
+      b[e2 >> 1] = (c2 & a2 | 0) == 0 ? d2 : d2 + 16 | 0;
+      return;
+    }
+    function Ba(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      i2 = c2 << 16 >> 16;
+      if (c2 << 16 >> 16 < 0)
+        f2 = 1 >>> (0 - i2 & 15);
+      else {
+        h2 = i2 & 15;
+        f2 = 1 << h2;
+        f2 = (f2 << 16 >> 16 >> h2 | 0) == 1 ? f2 : 32767;
+      }
+      h2 = (f2 << 16 >> 16) + -1 | 0;
+      g2 = h2 >> 31;
+      g2 = ((h2 >> 15 | 0) == (g2 | 0) ? h2 : g2 ^ 32767) << 16 >> 16;
+      if (c2 << 16 >> 16 > -1)
+        f2 = a2 >> (i2 & 31);
+      else {
+        h2 = 0 - i2 & 31;
+        f2 = a2 << h2;
+        f2 = (f2 >> h2 | 0) == (a2 | 0) ? f2 : a2 >> 31 ^ 2147483647;
+      }
+      h2 = f2 & g2;
+      c2 = d2 << 16 >> 16;
+      f2 = h2 + c2 | 0;
+      f2 = (h2 ^ c2 | 0) > -1 & (f2 ^ h2 | 0) < 0 ? h2 >> 31 ^ 2147483647 : f2;
+      h2 = f2 & 65535;
+      c2 = ((g2 & a2) << 16 >> 16) + c2 | 0;
+      d2 = c2 >> 31;
+      d2 = (c2 >> 15 | 0) == (d2 | 0) ? c2 : d2 ^ 32767;
+      c2 = d2 & 65535;
+      d2 = d2 << 16 >> 16;
+      g2 = f2 << 16 >> 16;
+      f2 = (1 << (((i2 << 17 >> 17 | 0) == (i2 | 0) ? i2 << 1 : i2 >>> 15 ^ 32767) << 16 >> 16) & a2 | 0) != 0;
+      if ((g2 | 0) <= (d2 | 0)) {
+        if (!f2) {
+          a2 = h2;
+          i2 = c2;
+          b[e2 >> 1] = a2;
+          e2 = e2 + 2 | 0;
+          b[e2 >> 1] = i2;
+          return;
+        }
+        a2 = g2 + 16 & 65535;
+        i2 = d2 + 16 & 65535;
+        b[e2 >> 1] = a2;
+        e2 = e2 + 2 | 0;
+        b[e2 >> 1] = i2;
+        return;
+      }
+      if (f2) {
+        a2 = g2 + 16 & 65535;
+        i2 = c2;
+        b[e2 >> 1] = a2;
+        e2 = e2 + 2 | 0;
+        b[e2 >> 1] = i2;
+        return;
+      } else {
+        a2 = h2;
+        i2 = d2 + 16 & 65535;
+        b[e2 >> 1] = a2;
+        e2 = e2 + 2 | 0;
+        b[e2 >> 1] = i2;
+        return;
+      }
+    }
+    function Ca(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0;
+      c2 = c2 << 16 >> 16;
+      g2 = c2 << 17;
+      f2 = d2 & 65535;
+      Ba((1 << (c2 << 1) + -1) + -1 & a2, c2 + 65535 & 65535, (1 << (g2 + -65536 >> 16) & a2 | 0) == 0 ? d2 : (1 << c2 + -1) + f2 & 65535, e2);
+      a2 = a2 >> (g2 >> 16) & (1 << c2 + 1) + -1;
+      c2 = 1 << c2;
+      d2 = (a2 & c2 + 65535) + f2 | 0;
+      b[e2 + 4 >> 1] = (a2 & c2 | 0) == 0 ? d2 : d2 + 16 | 0;
+      return;
+    }
+    function Da(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0;
+      i2 = c2 << 16 >> 16;
+      l2 = i2 + 65535 | 0;
+      m2 = l2 & 65535;
+      n2 = d2 & 65535;
+      f2 = l2 << 16;
+      o2 = f2 >> 16;
+      c2 = 1 << o2;
+      j2 = c2 + n2 | 0;
+      k2 = j2 & 65535;
+      switch (a2 >> ((i2 << 18) + -131072 >> 16) & 3) {
+        case 0: {
+          c2 = f2 >> 15;
+          f2 = l2 << 17;
+          h2 = 1 << (f2 + -65536 >> 16);
+          g2 = h2 + -1 & a2;
+          h2 = (h2 & a2 | 0) == 0;
+          i2 = 1 << o2 + -1;
+          if (!(1 << (l2 << 18 >> 16 | 1) & a2)) {
+            Ba(g2, o2 + 65535 & 65535, h2 ? d2 : i2 + n2 & 65535, e2);
+            Ba((1 << (f2 >> 16 | 1)) + -1 & a2 >> c2, m2, d2, e2 + 4 | 0);
+            return;
+          } else {
+            Ba(g2, o2 + 65535 & 65535, h2 ? k2 : i2 + j2 & 65535, e2);
+            Ba((1 << (f2 >> 16 | 1)) + -1 & a2 >> c2, m2, k2, e2 + 4 | 0);
+            return;
+          }
+        }
+        case 1: {
+          m2 = a2 >> ((o2 * 196608 | 0) + 65536 >> 16);
+          d2 = c2 + 65535 | 0;
+          n2 = (m2 & d2) + n2 | 0;
+          b[e2 >> 1] = (m2 & c2 | 0) == 0 ? n2 : n2 + 16 | 0;
+          n2 = l2 << 17;
+          Ba((1 << (f2 >> 15) + -1) + -1 & a2, o2 + 65535 & 65535, (1 << (n2 + -65536 >> 16) & a2 | 0) == 0 ? k2 : (1 << o2 + -1) + j2 & 65535, e2 + 2 | 0);
+          a2 = (1 << o2 + 1) + -1 & a2 >> (n2 >> 16);
+          d2 = (a2 & d2) + (j2 & 65535) | 0;
+          b[e2 + 6 >> 1] = (a2 & c2 | 0) == 0 ? d2 : d2 + 16 | 0;
+          return;
+        }
+        case 2: {
+          Ba(a2 >> (l2 << 17 >> 16 | 1), m2, d2, e2);
+          Ba(a2, m2, k2, e2 + 4 | 0);
+          return;
+        }
+        case 3: {
+          k2 = a2 >> (f2 + 65536 >> 16);
+          m2 = l2 << 17;
+          Ba((1 << (f2 >> 15) + -1) + -1 & k2, o2 + 65535 & 65535, (1 << (m2 + -65536 >> 16) & k2 | 0) == 0 ? d2 : (1 << o2 + -1) + n2 & 65535, e2);
+          m2 = k2 >> (m2 >> 16) & (1 << o2 + 1) + -1;
+          d2 = c2 + 65535 | 0;
+          o2 = (m2 & d2) + n2 | 0;
+          b[e2 + 4 >> 1] = (m2 & c2 | 0) == 0 ? o2 : o2 + 16 | 0;
+          d2 = (d2 & a2) + (j2 & 65535) | 0;
+          b[e2 + 6 >> 1] = (c2 & a2 | 0) == 0 ? d2 : d2 + 16 | 0;
+          return;
+        }
+      }
+    }
+    function Ea(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0;
+      l2 = c2 << 16 >> 16;
+      h2 = l2 + 65535 | 0;
+      g2 = h2 << 16;
+      m2 = g2 >> 16;
+      if ((h2 & 65535) << 16 >> 16 < 0)
+        f2 = 1 >>> (0 - m2 & 15);
+      else {
+        k2 = m2 & 15;
+        f2 = 1 << k2;
+        f2 = (f2 << 16 >> 16 >> k2 | 0) == 1 ? f2 : 32767;
+      }
+      k2 = (f2 << 16 >> 16) + (d2 << 16 >> 16) | 0;
+      j2 = k2 >> 31;
+      j2 = (k2 >> 15 | 0) == (j2 | 0) ? k2 : j2 ^ 32767;
+      k2 = a2 >> (l2 << 17 >> 16 | 1);
+      i2 = (1 << (g2 >> 15) + -1) + -1 & k2;
+      f2 = h2 << 17;
+      g2 = (1 << (f2 + -65536 >> 16) & k2 | 0) == 0;
+      h2 = 1 << m2 + -1;
+      if (!(1 << ((l2 * 327680 | 0) + -65536 >> 16) & a2)) {
+        j2 = d2 & 65535;
+        Ba(i2, m2 + 65535 & 65535, g2 ? d2 : h2 + j2 & 65535, e2);
+        k2 = (1 << m2 + 1) + -1 & k2 >> (f2 >> 16);
+        l2 = 1 << m2;
+        m2 = (k2 & l2 + 65535) + j2 | 0;
+        b[e2 + 4 >> 1] = (k2 & l2 | 0) == 0 ? m2 : m2 + 16 | 0;
+        Ba(a2, c2, d2, e2 + 6 | 0);
+        return;
+      } else {
+        Ba(i2, m2 + 65535 & 65535, j2 + (g2 ? 0 : h2) & 65535, e2);
+        k2 = (1 << m2 + 1) + -1 & k2 >> (f2 >> 16);
+        l2 = 1 << m2;
+        m2 = (j2 & 65535) + (k2 & l2 + 65535) | 0;
+        b[e2 + 4 >> 1] = (k2 & l2 | 0) == 0 ? m2 : m2 + 16 | 0;
+        Ba(a2, c2, d2, e2 + 6 | 0);
+        return;
+      }
+    }
+    function Fa(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0;
+      i2 = c2 << 16 >> 16;
+      j2 = i2 + 65535 | 0;
+      k2 = j2 & 65535;
+      l2 = d2 & 65535;
+      o2 = j2 << 16;
+      m2 = o2 >> 16;
+      n2 = 1 << m2;
+      g2 = n2 + l2 | 0;
+      h2 = g2 & 65535;
+      p2 = i2 * 6 | 0;
+      f2 = (1 << p2 + -5 & a2 | 0) == 0;
+      c2 = f2 ? d2 : h2;
+      f2 = f2 ? h2 : d2;
+      switch (a2 >> p2 + -4 & 3) {
+        case 0: {
+          Ea(a2 >> i2, k2, c2, e2);
+          p2 = (n2 + 65535 & a2) + (c2 & 65535) | 0;
+          b[e2 + 10 >> 1] = (n2 & a2 | 0) == 0 ? p2 : p2 + 16 | 0;
+          return;
+        }
+        case 1: {
+          Ea(a2 >> i2, k2, c2, e2);
+          p2 = (n2 + 65535 & a2) + (f2 & 65535) | 0;
+          b[e2 + 10 >> 1] = (n2 & a2 | 0) == 0 ? p2 : p2 + 16 | 0;
+          return;
+        }
+        case 2: {
+          Da(a2 >> (o2 >> 15 | 1), k2, c2, e2);
+          Ba(a2, k2, f2, e2 + 8 | 0);
+          return;
+        }
+        case 3: {
+          c2 = a2 >> (m2 * 3 | 0) + 1;
+          f2 = (1 << (o2 >> 15) + -1) + -1 | 0;
+          p2 = j2 << 17;
+          j2 = 1 << (p2 + -65536 >> 16);
+          k2 = 1 << m2 + -1;
+          i2 = m2 + 65535 & 65535;
+          Ba(f2 & c2, i2, (c2 & j2 | 0) == 0 ? d2 : k2 + l2 & 65535, e2);
+          o2 = (1 << m2 + 1) + -1 | 0;
+          d2 = p2 >> 16;
+          c2 = c2 >> d2 & o2;
+          p2 = n2 + 65535 | 0;
+          m2 = (c2 & p2) + l2 | 0;
+          b[e2 + 4 >> 1] = (c2 & n2 | 0) == 0 ? m2 : m2 + 16 | 0;
+          Ba(f2 & a2, i2, (j2 & a2 | 0) == 0 ? h2 : k2 + g2 & 65535, e2 + 6 | 0);
+          d2 = o2 & a2 >> d2;
+          p2 = (d2 & p2) + (g2 & 65535) | 0;
+          b[e2 + 10 >> 1] = (d2 & n2 | 0) == 0 ? p2 : p2 + 16 | 0;
+          return;
+        }
+      }
+    }
+    function Ga(c2) {
+      c2 = c2 | 0;
+      var d2 = 0, e2 = 0;
+      b[c2 >> 1] = -14336;
+      b[c2 + 2 >> 1] = -14336;
+      b[c2 + 4 >> 1] = -14336;
+      b[c2 + 6 >> 1] = -14336;
+      d2 = c2 + 8 | 0;
+      e2 = d2 + 36 | 0;
+      do {
+        a[d2 >> 0] = 0;
+        d2 = d2 + 1 | 0;
+      } while ((d2 | 0) < (e2 | 0));
+      b[c2 + 44 >> 1] = 21845;
+      return;
+    }
+    function Ha(a2, d2, f2, g2, h2, i2, j2, k2, n2, o2, p2, q2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      j2 = j2 | 0;
+      k2 = k2 | 0;
+      n2 = n2 | 0;
+      o2 = o2 | 0;
+      p2 = p2 | 0;
+      q2 = q2 | 0;
+      var r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0;
+      D2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      u2 = D2 + 8 | 0;
+      v2 = D2 + 6 | 0;
+      s2 = D2 + 4 | 0;
+      y2 = D2;
+      z2 = q2 + 8 | 0;
+      A2 = q2 + 10 | 0;
+      w2 = q2 + 12 | 0;
+      B2 = q2 + 14 | 0;
+      C2 = q2 + 24 | 0;
+      x2 = q2 + 34 | 0;
+      c[y2 >> 2] = yb(f2, f2, g2, u2) | 0;
+      b[u2 >> 1] = (e[u2 >> 1] | 0) + 65512;
+      wb(y2, u2);
+      f2 = c[y2 >> 2] | 0;
+      t2 = (e[u2 >> 1] | 0) + 65533 | 0;
+      g2 = t2 << 16 >> 16;
+      if ((t2 & 65535) << 16 >> 16 > 0) {
+        t2 = f2 << g2;
+        t2 = (t2 >> g2 | 0) == (f2 | 0) ? t2 : f2 >> 31 ^ 2147483647;
+      } else
+        t2 = f2 >> (0 - g2 & 15);
+      if (j2 << 16 >> 16) {
+        x2 = db(q2 + 18 | 0) | 0;
+        x2 = x2 << 16 >> 16 < 15565 ? x2 : 15565;
+        b[z2 >> 1] = x2;
+        g2 = o2 << 16 >> 16 != 0;
+        f2 = n2 << 16 >> 16;
+        x2 = N(x2 << 16 >> 16, b[(g2 ? 300 : 328) + (f2 << 1) >> 1] | 0) | 0;
+        r2 = x2 >> 31;
+        b[h2 >> 1] = (x2 >> 30 | 0) == (r2 | 0) ? x2 >>> 15 : r2 ^ 32767;
+        r2 = db(q2 + 28 | 0) | 0;
+        if (p2 << 16 >> 16 <= 2) {
+          h2 = N(b[(g2 ? 314 : 342) + (f2 << 1) >> 1] | 0, r2 << 16 >> 16) | 0;
+          r2 = h2 >> 31;
+          r2 = ((h2 >> 30 | 0) == (r2 | 0) ? h2 >>> 15 : r2 ^ 32767) & 65535;
+        }
+        b[A2 >> 1] = r2;
+        w2 = q2 + 4 | 0;
+        h2 = q2 + 2 | 0;
+        v2 = b[h2 >> 1] | 0;
+        x2 = b[q2 >> 1] | 0;
+        A2 = (b[w2 >> 1] | 0) + (b[q2 + 6 >> 1] | 0) + (v2 << 16 >> 16) + (x2 << 16 >> 16) | 0;
+        c[y2 >> 2] = A2;
+        b[w2 >> 1] = v2;
+        b[h2 >> 1] = x2;
+        A2 = (A2 >>> 3) + 62464 | 0;
+        b[q2 >> 1] = (A2 << 16 | 0) < -939524096 ? -14336 : A2 & 65535;
+        A2 = q2 + 26 | 0;
+        b[C2 >> 1] = b[A2 >> 1] | 0;
+        y2 = q2 + 16 | 0;
+        b[B2 >> 1] = b[y2 >> 1] | 0;
+        C2 = q2 + 28 | 0;
+        b[A2 >> 1] = b[C2 >> 1] | 0;
+        A2 = q2 + 18 | 0;
+        b[y2 >> 1] = b[A2 >> 1] | 0;
+        B2 = q2 + 30 | 0;
+        b[C2 >> 1] = b[B2 >> 1] | 0;
+        C2 = q2 + 20 | 0;
+        b[A2 >> 1] = b[C2 >> 1] | 0;
+        b[B2 >> 1] = b[q2 + 32 >> 1] | 0;
+        b[C2 >> 1] = b[q2 + 22 >> 1] | 0;
+        b[q2 + 32 >> 1] = r2;
+        b[q2 + 22 >> 1] = b[z2 >> 1] | 0;
+        C2 = N(t2 >> 16, r2 << 16 >> 16) | 0;
+        c[i2 >> 2] = (C2 | 0) == 1073741824 ? 2147483647 : C2 << 1;
+        l = D2;
+        return;
+      }
+      n2 = (b[q2 >> 1] << 13) + 503316480 | 0;
+      o2 = q2 + 2 | 0;
+      j2 = b[o2 >> 1] | 0;
+      j2 = (j2 * 3277 | 0) == 1073741824 ? 2147483647 : j2 * 6554 | 0;
+      p2 = j2 + n2 | 0;
+      p2 = (j2 ^ n2 | 0) > -1 & (p2 ^ n2 | 0) < 0 ? n2 >> 31 ^ 2147483647 : p2;
+      n2 = q2 + 4 | 0;
+      j2 = b[n2 >> 1] | 0;
+      j2 = (j2 * 2458 | 0) == 1073741824 ? 2147483647 : j2 * 4916 | 0;
+      g2 = p2 + j2 | 0;
+      g2 = (p2 ^ j2 | 0) > -1 & (g2 ^ p2 | 0) < 0 ? p2 >> 31 ^ 2147483647 : g2;
+      p2 = q2 + 6 | 0;
+      j2 = b[p2 >> 1] | 0;
+      j2 = (j2 * 1638 | 0) == 1073741824 ? 2147483647 : j2 * 3276 | 0;
+      f2 = g2 + j2 | 0;
+      f2 = (((g2 ^ j2 | 0) > -1 & (f2 ^ g2 | 0) < 0 ? g2 >> 31 ^ 2147418112 : f2) >> 16) * 5443 >> 7;
+      c[y2 >> 2] = f2;
+      Ab(f2, s2, v2);
+      f2 = xb(14, b[v2 >> 1] | 0) | 0;
+      g2 = b[s2 >> 1] | 0;
+      b[s2 >> 1] = (g2 & 65535) + 65522;
+      j2 = a2 << 16 >> 16 << 1;
+      j2 = d2 << 16 >> 16 == 6 ? 7940 + (j2 << 1) | 0 : 8196 + (j2 << 1) | 0;
+      b[h2 >> 1] = b[j2 >> 1] | 0;
+      j2 = b[j2 + 2 >> 1] | 0;
+      f2 = N(f2 << 16 >> 16, j2) | 0;
+      f2 = (f2 | 0) == 1073741824 ? 2147483647 : f2 << 1;
+      c[y2 >> 2] = f2;
+      s2 = (g2 + -14 & 65535) + 4 | 0;
+      g2 = s2 << 16 >> 16;
+      if ((s2 & 65535) << 16 >> 16 > 0) {
+        s2 = f2 << g2;
+        f2 = (s2 >> g2 | 0) == (f2 | 0) ? s2 : f2 >> 31 ^ 2147483647;
+      } else
+        f2 = f2 >> (0 - g2 & 15);
+      c[y2 >> 2] = f2;
+      c[i2 >> 2] = f2;
+      if (k2 << 16 >> 16 == 1 ? (r2 = b[w2 >> 1] | 0, r2 = (r2 * 5120 | 0) == 1073741824 ? 2147483647 : r2 * 10240 | 0, c[y2 >> 2] = r2, (f2 | 0) > 6553600 & (f2 | 0) > (r2 | 0)) : 0)
+        c[i2 >> 2] = r2;
+      else
+        r2 = f2;
+      k2 = r2 << 3;
+      k2 = (k2 >> 3 | 0) == (r2 | 0) ? k2 : r2 >> 31 ^ 2147483647;
+      k2 = (k2 | 0) == 2147483647 ? 32767 : (k2 + 32768 | 0) >>> 16 & 65535;
+      b[A2 >> 1] = k2;
+      A2 = b[h2 >> 1] | 0;
+      b[z2 >> 1] = A2;
+      b[w2 >> 1] = k2;
+      z2 = b[q2 + 36 >> 1] | 0;
+      h2 = b[q2 + 16 >> 1] | 0;
+      w2 = b[q2 + 26 >> 1] | 0;
+      b[C2 >> 1] = w2;
+      b[B2 >> 1] = h2;
+      b[x2 >> 1] = z2;
+      b[q2 + 26 >> 1] = w2;
+      b[q2 + 16 >> 1] = h2;
+      b[q2 + 36 >> 1] = z2;
+      b[q2 + 32 >> 1] = k2;
+      b[q2 + 22 >> 1] = A2;
+      b[q2 + 42 >> 1] = A2;
+      Ab(r2, u2, v2);
+      B2 = t2 >> 16;
+      B2 = ((N(B2, b[v2 >> 1] | 0) | 0) >> 15) + (N(B2, b[u2 >> 1] | 0) | 0) | 0;
+      C2 = B2 << 1;
+      B2 = B2 << 4;
+      c[i2 >> 2] = (B2 >> 3 | 0) == (C2 | 0) ? B2 : C2 >> 31 ^ 2147483647;
+      b[p2 >> 1] = b[n2 >> 1] | 0;
+      b[n2 >> 1] = b[o2 >> 1] | 0;
+      b[o2 >> 1] = b[q2 >> 1] | 0;
+      c[y2 >> 2] = j2;
+      zb(j2, u2, v2);
+      i2 = (e[u2 >> 1] | 0) + 65525 | 0;
+      b[u2 >> 1] = i2;
+      i2 = ((b[v2 >> 1] | 0) * 24660 >> 15) + ((i2 << 16 >> 16) * 24660 | 0) | 0;
+      c[y2 >> 2] = i2 << 1;
+      b[q2 >> 1] = i2 >>> 2;
+      l = D2;
+      return;
+    }
+    function Ia(a2, c2, d2, f2, g2, h2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      var i2 = 0, j2 = 0, k2 = 0, l2 = 0;
+      j2 = (b[c2 >> 1] << 4) + (e[a2 >> 1] << 16) | 0;
+      i2 = j2 << 3;
+      l2 = f2 << 16 >> 16;
+      j2 = ((i2 >> 3 | 0) == (j2 | 0) ? i2 : j2 >> 31 ^ 2147483647) + (N(b[h2 >> 1] | 0, l2) | 0) | 0;
+      f2 = j2 << 1;
+      j2 = (f2 >> 1 | 0) == (j2 | 0) ? f2 : j2 >> 31 ^ 2147483647;
+      b[d2 >> 1] = (j2 | 0) == 2147483647 ? 32767 : (j2 + 32768 | 0) >>> 16 & 65535;
+      j2 = (g2 << 16 >> 16) + -1 | 0;
+      f2 = a2 + 2 | 0;
+      g2 = c2 + 2 | 0;
+      i2 = 1;
+      while (1) {
+        k2 = i2 << 16 >> 16;
+        g2 = (b[g2 >> 1] << 4) + (e[f2 >> 1] << 16) | 0;
+        f2 = g2 << 3;
+        g2 = ((f2 >> 3 | 0) == (g2 | 0) ? f2 : g2 >> 31 ^ 2147483647) + (N(b[d2 + (k2 + -1 << 1) >> 1] | 0, l2) | 0) | 0;
+        f2 = g2 << 1;
+        g2 = (f2 >> 1 | 0) == (g2 | 0) ? f2 : g2 >> 31 ^ 2147483647;
+        b[d2 + (k2 << 1) >> 1] = (g2 | 0) == 2147483647 ? 32767 : (g2 + 32768 | 0) >>> 16 & 65535;
+        if ((j2 | 0) <= (k2 | 0))
+          break;
+        g2 = k2 + 1 | 0;
+        f2 = a2 + (g2 << 1) | 0;
+        g2 = c2 + (g2 << 1) | 0;
+        i2 = i2 + 1 << 16 >> 16;
+      }
+      b[h2 >> 1] = b[d2 + (j2 << 1) >> 1] | 0;
+      return;
+    }
+    function Ja(c2, d2) {
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0;
+      if (!c2) {
+        g2 = -1;
+        return g2 | 0;
+      }
+      b[c2 >> 1] = 0;
+      b[c2 + 2 >> 1] = 8192;
+      b[c2 + 4 >> 1] = 3500;
+      b[c2 + 6 >> 1] = 3500;
+      b[c2 + 74 >> 1] = 21845;
+      b[c2 + 348 >> 1] = 0;
+      e2 = c2 + 10 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      e2 = c2 + 42 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      e2 = c2 + 76 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 332 >> 1] = 3500;
+      e2 = c2 + 108 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 334 >> 1] = 3500;
+      e2 = c2 + 140 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 336 >> 1] = 3500;
+      e2 = c2 + 172 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 338 >> 1] = 3500;
+      e2 = c2 + 204 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 340 >> 1] = 3500;
+      e2 = c2 + 236 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 342 >> 1] = 3500;
+      e2 = c2 + 268 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 344 >> 1] = 3500;
+      e2 = c2 + 300 | 0;
+      f2 = d2;
+      g2 = e2 + 32 | 0;
+      do {
+        a[e2 >> 0] = a[f2 >> 0] | 0;
+        e2 = e2 + 1 | 0;
+        f2 = f2 + 1 | 0;
+      } while ((e2 | 0) < (g2 | 0));
+      b[c2 + 346 >> 1] = 3500;
+      b[c2 + 350 >> 1] = 7;
+      b[c2 + 352 >> 1] = 32767;
+      g2 = c2 + 354 | 0;
+      b[g2 >> 1] = 0;
+      b[g2 + 2 >> 1] = 0;
+      b[g2 + 4 >> 1] = 0;
+      b[g2 + 6 >> 1] = 0;
+      b[g2 + 8 >> 1] = 0;
+      b[c2 + 364 >> 1] = 21845;
+      b[c2 + 366 >> 1] = 0;
+      g2 = 0;
+      return g2 | 0;
+    }
+    function Ka(d2, f2, g2, h2, i2) {
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      var j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0, F2 = 0, G2 = 0, H2 = 0, I2 = 0, J2 = 0, K2 = 0, L2 = 0, M2 = 0, O2 = 0, P2 = 0, Q2 = 0, R2 = 0, S2 = 0, T2 = 0, U2 = 0, V2 = 0, X2 = 0, Y2 = 0, Z2 = 0, _2 = 0, $2 = 0, aa2 = 0, ba2 = 0, ca2 = 0, da2 = 0;
+      aa2 = l;
+      l = l + 96 | 0;
+      if ((l | 0) >= (m | 0))
+        W(96);
+      V2 = aa2 + 74 | 0;
+      U2 = aa2 + 8 | 0;
+      X2 = aa2 + 4 | 0;
+      Y2 = aa2;
+      Z2 = aa2 + 72 | 0;
+      $2 = d2 + 358 | 0;
+      _2 = d2 + 354 | 0;
+      if (b[$2 >> 1] | 0)
+        if (!(b[_2 >> 1] | 0))
+          u2 = 7;
+        else {
+          j2 = d2 + 348 | 0;
+          o2 = b[j2 >> 1] | 0;
+          k2 = o2 + 1 | 0;
+          k2 = (k2 & 65535 | 0) == 8 ? 0 : k2 << 16 >> 16;
+          q2 = d2 + 76 + (k2 << 4 << 1) | 0;
+          o2 = d2 + 76 + (o2 << 4 << 1) | 0;
+          r2 = q2 + 32 | 0;
+          do {
+            a[q2 >> 0] = a[o2 >> 0] | 0;
+            q2 = q2 + 1 | 0;
+            o2 = o2 + 1 | 0;
+          } while ((q2 | 0) < (r2 | 0));
+          b[d2 + 332 + (k2 << 1) >> 1] = b[d2 + 332 + (b[j2 >> 1] << 1) >> 1] | 0;
+          T2 = d2 + 4 | 0;
+          b[T2 >> 1] = 0;
+          q2 = U2;
+          r2 = q2 + 64 | 0;
+          do {
+            c[q2 >> 2] = 0;
+            q2 = q2 + 4 | 0;
+          } while ((q2 | 0) < (r2 | 0));
+          x2 = U2 + 4 | 0;
+          y2 = U2 + 8 | 0;
+          z2 = U2 + 12 | 0;
+          A2 = U2 + 16 | 0;
+          B2 = U2 + 20 | 0;
+          C2 = U2 + 24 | 0;
+          D2 = U2 + 28 | 0;
+          E2 = U2 + 32 | 0;
+          F2 = U2 + 36 | 0;
+          G2 = U2 + 40 | 0;
+          H2 = U2 + 44 | 0;
+          I2 = U2 + 48 | 0;
+          J2 = U2 + 52 | 0;
+          K2 = U2 + 56 | 0;
+          L2 = U2 + 60 | 0;
+          j2 = c[G2 >> 2] | 0;
+          k2 = c[H2 >> 2] | 0;
+          n2 = c[I2 >> 2] | 0;
+          o2 = c[J2 >> 2] | 0;
+          p2 = c[K2 >> 2] | 0;
+          q2 = c[L2 >> 2] | 0;
+          r2 = c[C2 >> 2] | 0;
+          s2 = c[D2 >> 2] | 0;
+          t2 = c[E2 >> 2] | 0;
+          u2 = c[F2 >> 2] | 0;
+          v2 = 0;
+          w2 = 0;
+          M2 = 0;
+          O2 = 0;
+          P2 = 0;
+          Q2 = 0;
+          R2 = 0;
+          S2 = 0;
+          do {
+            da2 = (b[d2 + 332 + (S2 << 1) >> 1] | 0) + (M2 << 16 >> 16) | 0;
+            ca2 = da2 >> 31;
+            b[T2 >> 1] = (da2 >> 15 | 0) == (ca2 | 0) ? da2 : ca2 ^ 32767;
+            ca2 = S2 << 4;
+            da2 = b[d2 + 76 + (ca2 << 1) >> 1] | 0;
+            ba2 = O2 + da2 | 0;
+            O2 = (O2 ^ da2 | 0) > -1 & (ba2 ^ O2 | 0) < 0 ? O2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 1) << 1) >> 1] | 0;
+            da2 = P2 + ba2 | 0;
+            P2 = (P2 ^ ba2 | 0) > -1 & (da2 ^ P2 | 0) < 0 ? P2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 2) << 1) >> 1] | 0;
+            ba2 = Q2 + da2 | 0;
+            Q2 = (Q2 ^ da2 | 0) > -1 & (ba2 ^ Q2 | 0) < 0 ? Q2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 3) << 1) >> 1] | 0;
+            da2 = R2 + ba2 | 0;
+            R2 = (R2 ^ ba2 | 0) > -1 & (da2 ^ R2 | 0) < 0 ? R2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 4) << 1) >> 1] | 0;
+            ba2 = v2 + da2 | 0;
+            v2 = (v2 ^ da2 | 0) > -1 & (ba2 ^ v2 | 0) < 0 ? v2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 5) << 1) >> 1] | 0;
+            da2 = w2 + ba2 | 0;
+            w2 = (w2 ^ ba2 | 0) > -1 & (da2 ^ w2 | 0) < 0 ? w2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 6) << 1) >> 1] | 0;
+            ba2 = r2 + da2 | 0;
+            r2 = (r2 ^ da2 | 0) > -1 & (ba2 ^ r2 | 0) < 0 ? r2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 7) << 1) >> 1] | 0;
+            da2 = s2 + ba2 | 0;
+            s2 = (s2 ^ ba2 | 0) > -1 & (da2 ^ s2 | 0) < 0 ? s2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 8) << 1) >> 1] | 0;
+            ba2 = t2 + da2 | 0;
+            t2 = (t2 ^ da2 | 0) > -1 & (ba2 ^ t2 | 0) < 0 ? t2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 9) << 1) >> 1] | 0;
+            da2 = u2 + ba2 | 0;
+            u2 = (u2 ^ ba2 | 0) > -1 & (da2 ^ u2 | 0) < 0 ? u2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 10) << 1) >> 1] | 0;
+            ba2 = j2 + da2 | 0;
+            j2 = (j2 ^ da2 | 0) > -1 & (ba2 ^ j2 | 0) < 0 ? j2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 11) << 1) >> 1] | 0;
+            da2 = k2 + ba2 | 0;
+            k2 = (k2 ^ ba2 | 0) > -1 & (da2 ^ k2 | 0) < 0 ? k2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 12) << 1) >> 1] | 0;
+            ba2 = n2 + da2 | 0;
+            n2 = (n2 ^ da2 | 0) > -1 & (ba2 ^ n2 | 0) < 0 ? n2 >> 31 ^ 2147483647 : ba2;
+            ba2 = b[d2 + 76 + ((ca2 | 13) << 1) >> 1] | 0;
+            da2 = o2 + ba2 | 0;
+            o2 = (o2 ^ ba2 | 0) > -1 & (da2 ^ o2 | 0) < 0 ? o2 >> 31 ^ 2147483647 : da2;
+            da2 = b[d2 + 76 + ((ca2 | 14) << 1) >> 1] | 0;
+            ba2 = p2 + da2 | 0;
+            p2 = (p2 ^ da2 | 0) > -1 & (ba2 ^ p2 | 0) < 0 ? p2 >> 31 ^ 2147483647 : ba2;
+            ca2 = b[d2 + 76 + ((ca2 | 15) << 1) >> 1] | 0;
+            ba2 = q2 + ca2 | 0;
+            q2 = (q2 ^ ca2 | 0) > -1 & (ba2 ^ q2 | 0) < 0 ? q2 >> 31 ^ 2147483647 : ba2;
+            S2 = S2 + 1 | 0;
+            M2 = b[T2 >> 1] | 0;
+          } while ((S2 | 0) != 8);
+          c[U2 >> 2] = O2;
+          c[x2 >> 2] = P2;
+          c[y2 >> 2] = Q2;
+          c[z2 >> 2] = R2;
+          c[A2 >> 2] = v2;
+          c[B2 >> 2] = w2;
+          c[C2 >> 2] = r2;
+          c[D2 >> 2] = s2;
+          c[E2 >> 2] = t2;
+          c[F2 >> 2] = u2;
+          c[G2 >> 2] = j2;
+          c[H2 >> 2] = k2;
+          c[I2 >> 2] = n2;
+          c[J2 >> 2] = o2;
+          c[K2 >> 2] = p2;
+          c[L2 >> 2] = q2;
+          u2 = M2 << 16 >> 16 >> 1;
+          b[T2 >> 1] = u2 << 16 >> 16 < -1024 ? 0 : u2 + 1024 << 16 >> 16;
+          b[d2 + 10 >> 1] = (c[U2 >> 2] | 0) >>> 3;
+          b[d2 + 12 >> 1] = (c[x2 >> 2] | 0) >>> 3;
+          b[d2 + 14 >> 1] = (c[y2 >> 2] | 0) >>> 3;
+          b[d2 + 16 >> 1] = (c[z2 >> 2] | 0) >>> 3;
+          b[d2 + 18 >> 1] = (c[A2 >> 2] | 0) >>> 3;
+          b[d2 + 20 >> 1] = (c[B2 >> 2] | 0) >>> 3;
+          b[d2 + 22 >> 1] = (c[C2 >> 2] | 0) >>> 3;
+          b[d2 + 24 >> 1] = (c[D2 >> 2] | 0) >>> 3;
+          b[d2 + 26 >> 1] = (c[E2 >> 2] | 0) >>> 3;
+          b[d2 + 28 >> 1] = (c[F2 >> 2] | 0) >>> 3;
+          b[d2 + 30 >> 1] = j2 >>> 3;
+          b[d2 + 32 >> 1] = k2 >>> 3;
+          b[d2 + 34 >> 1] = n2 >>> 3;
+          b[d2 + 36 >> 1] = o2 >>> 3;
+          b[d2 + 38 >> 1] = p2 >>> 3;
+          b[d2 + 40 >> 1] = q2 >>> 3;
+          u2 = 6;
+        }
+      else
+        u2 = 6;
+      if ((u2 | 0) == 6)
+        if (b[_2 >> 1] | 0) {
+          n2 = d2 + 42 | 0;
+          k2 = d2 + 10 | 0;
+          q2 = n2;
+          o2 = k2;
+          r2 = q2 + 32 | 0;
+          do {
+            a[q2 >> 0] = a[o2 >> 0] | 0;
+            q2 = q2 + 1 | 0;
+            o2 = o2 + 1 | 0;
+          } while ((q2 | 0) < (r2 | 0));
+          t2 = d2 + 4 | 0;
+          j2 = b[t2 >> 1] | 0;
+          s2 = d2 + 6 | 0;
+          b[s2 >> 1] = j2;
+          p2 = d2 + 356 | 0;
+          do
+            if (b[p2 >> 1] | 0) {
+              j2 = b[d2 >> 1] | 0;
+              j2 = j2 << 16 >> 16 < 32 ? j2 : 32;
+              if (j2 << 16 >> 16 > 1) {
+                j2 = j2 << 16 >> 16;
+                j2 = ub(1024, ((j2 << 26 >> 26 | 0) == (j2 | 0) ? j2 << 10 : j2 >>> 15 ^ 32767) & 65535) | 0;
+              } else
+                j2 = 16384;
+              b[d2 + 2 >> 1] = j2;
+              b[V2 >> 1] = Oa(6, i2) | 0;
+              b[V2 + 2 >> 1] = Oa(6, i2) | 0;
+              b[V2 + 4 >> 1] = Oa(6, i2) | 0;
+              b[V2 + 6 >> 1] = Oa(5, i2) | 0;
+              b[V2 + 8 >> 1] = Oa(5, i2) | 0;
+              Cb(V2, k2);
+              da2 = Oa(6, i2) | 0;
+              b[d2 + 366 >> 1] = Pa(i2) | 0;
+              da2 = da2 << 16 >> 16;
+              da2 = (((da2 << 25 >> 25 | 0) == (da2 | 0) ? da2 << 9 : da2 >>> 15 ^ 32767) << 16 >> 16) * 12483 | 0;
+              j2 = da2 >> 31;
+              j2 = ((da2 >> 30 | 0) == (j2 | 0) ? da2 >>> 15 : j2 ^ 32767) & 65535;
+              b[t2 >> 1] = j2;
+              if (b[d2 + 362 >> 1] | 0 ? b[d2 + 360 >> 1] | 0 : 0)
+                break;
+              q2 = n2;
+              o2 = k2;
+              r2 = q2 + 32 | 0;
+              do {
+                a[q2 >> 0] = a[o2 >> 0] | 0;
+                q2 = q2 + 1 | 0;
+                o2 = o2 + 1 | 0;
+              } while ((q2 | 0) < (r2 | 0));
+              b[s2 >> 1] = j2;
+            }
+          while (0);
+          if ((b[_2 >> 1] | 0) != 0 ? (b[p2 >> 1] | 0) != 0 : 0)
+            b[d2 >> 1] = 0;
+        } else
+          u2 = 7;
+      if ((u2 | 0) == 7) {
+        j2 = d2 + 4 | 0;
+        k2 = d2 + 10 | 0;
+        s2 = d2 + 6 | 0;
+        t2 = j2;
+        j2 = b[j2 >> 1] | 0;
+      }
+      n2 = b[d2 >> 1] | 0;
+      p2 = d2 + 2 | 0;
+      n2 = N(((n2 << 26 >> 26 | 0) == (n2 | 0) ? n2 << 10 : n2 >>> 15 ^ 32767) << 16 >> 16, b[p2 >> 1] | 0) | 0;
+      da2 = n2 >> 31;
+      da2 = (n2 >> 30 | 0) == (da2 | 0) ? n2 >>> 15 : da2 ^ 32767;
+      da2 = (da2 & 65535) << 16 >> 16 < 1024 ? da2 << 16 >> 16 : 1024;
+      da2 = (da2 << 20 >> 20 | 0) == (da2 | 0) ? da2 << 4 : da2 >>> 15 ^ 32767;
+      n2 = da2 << 16 >> 16;
+      j2 = N(n2, j2 << 16 >> 16) | 0;
+      c[X2 >> 2] = (j2 | 0) == 1073741824 ? 2147483647 : j2 << 1;
+      j2 = N(n2, b[k2 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 12 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 2 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 14 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 4 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 16 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 6 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 18 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 8 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 20 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 10 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 22 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 12 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 24 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 14 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 26 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 16 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 28 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 18 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 30 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 20 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 32 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 22 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 34 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 24 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 36 >> 1] | 0) | 0;
+      j2 = k2 >> 31;
+      b[h2 + 26 >> 1] = (k2 >> 30 | 0) == (j2 | 0) ? k2 >>> 15 : j2 ^ 32767;
+      j2 = N(n2, b[d2 + 38 >> 1] | 0) | 0;
+      k2 = j2 >> 31;
+      b[h2 + 28 >> 1] = (j2 >> 30 | 0) == (k2 | 0) ? j2 >>> 15 : k2 ^ 32767;
+      k2 = N(n2, b[d2 + 40 >> 1] | 0) | 0;
+      n2 = k2 >> 31;
+      b[h2 + 30 >> 1] = (k2 >> 30 | 0) == (n2 | 0) ? k2 >>> 15 : n2 ^ 32767;
+      n2 = c[X2 >> 2] | 0;
+      k2 = 16384 - da2 << 16 >> 16;
+      da2 = N(k2, b[s2 >> 1] | 0) | 0;
+      da2 = (da2 | 0) == 1073741824 ? 2147483647 : da2 << 1;
+      j2 = da2 + n2 | 0;
+      j2 = (da2 ^ n2 | 0) > -1 & (j2 ^ n2 | 0) < 0 ? n2 >> 31 ^ 2147483647 : j2;
+      c[X2 >> 2] = j2;
+      n2 = 0;
+      do {
+        da2 = h2 + (n2 << 1) | 0;
+        ba2 = N(k2, b[d2 + 42 + (n2 << 1) >> 1] | 0) | 0;
+        ca2 = ba2 >> 31;
+        ca2 = (((ba2 >> 30 | 0) == (ca2 | 0) ? ba2 >>> 15 : ca2 ^ 32767) << 16 >> 16) + (b[da2 >> 1] | 0) | 0;
+        ba2 = ca2 >> 31;
+        ba2 = (ca2 >> 15 | 0) == (ba2 | 0) ? ca2 : ba2 ^ 32767;
+        ca2 = ba2 << 16;
+        b[da2 >> 1] = (ba2 << 17 >> 17 | 0) == (ca2 >> 16 | 0) ? ba2 << 1 : ca2 >> 31 ^ 32767;
+        n2 = n2 + 1 | 0;
+      } while ((n2 | 0) != 16);
+      if (b[d2 + 366 >> 1] | 0) {
+        La(h2, X2, d2 + 364 | 0);
+        j2 = c[X2 >> 2] | 0;
+      }
+      n2 = j2 >> 9;
+      c[X2 >> 2] = n2;
+      da2 = j2 >> 25;
+      o2 = da2 << 16;
+      k2 = n2 - o2 | 0;
+      j2 = xb(da2 + 15 & 65535, (((k2 ^ n2) & (o2 ^ n2) | 0) < 0 ? j2 >> 31 ^ 131070 : k2) >>> 1 & 65535) | 0;
+      k2 = (gb(j2) | 0) << 16 >> 16;
+      n2 = d2 + 74 | 0;
+      o2 = 0;
+      do {
+        b[f2 + (o2 << 1) >> 1] = (fb(n2) | 0) << 16 >> 16 >> 4;
+        o2 = o2 + 1 | 0;
+      } while ((o2 | 0) != 256);
+      c[Y2 >> 2] = yb(f2, f2, 256, Z2) | 0;
+      wb(Y2, Z2);
+      ca2 = N(c[Y2 >> 2] >> 16, j2 << k2 >> 16) | 0;
+      o2 = ca2 >> 31;
+      n2 = 19 - k2 + (e[Z2 >> 1] | 0) | 0;
+      da2 = n2 & 65535;
+      b[Z2 >> 1] = da2;
+      o2 = ((ca2 >> 30 | 0) == (o2 | 0) ? ca2 >>> 15 : o2 ^ 32767) << 16 >> 16;
+      n2 = n2 << 16 >> 16;
+      k2 = 0 - n2 & 15;
+      n2 = n2 & 15;
+      if (da2 << 16 >> 16 < 0) {
+        j2 = 0;
+        do {
+          da2 = f2 + (j2 << 1) | 0;
+          ba2 = N(o2, b[da2 >> 1] | 0) | 0;
+          ca2 = ba2 >> 31;
+          b[da2 >> 1] = ((ba2 >> 30 | 0) == (ca2 | 0) ? ba2 >>> 15 : ca2 ^ 32767) << 16 >> 16 >> k2;
+          j2 = j2 + 1 | 0;
+        } while ((j2 | 0) != 256);
+      } else {
+        j2 = 0;
+        do {
+          da2 = f2 + (j2 << 1) | 0;
+          Z2 = N(o2, b[da2 >> 1] | 0) | 0;
+          ca2 = Z2 >> 31;
+          ca2 = ((Z2 >> 30 | 0) == (ca2 | 0) ? Z2 >>> 15 : ca2 ^ 32767) << 16;
+          Z2 = ca2 >> 16;
+          ba2 = Z2 << n2;
+          b[da2 >> 1] = (ba2 << 16 >> 16 >> n2 | 0) == (Z2 | 0) ? ba2 : ca2 >> 31 ^ 32767;
+          j2 = j2 + 1 | 0;
+        } while ((j2 | 0) != 256);
+      }
+      if (g2 << 16 >> 16 == 2) {
+        da2 = b[d2 >> 1] | 0;
+        da2 = (da2 << 16 >> 16 < 32 ? da2 : 32) << 16 >> 16;
+        b[p2 >> 1] = ub(1024, ((da2 << 26 >> 26 | 0) == (da2 | 0) ? da2 << 10 : da2 >>> 15 ^ 32767) & 65535) | 0;
+        b[d2 >> 1] = 0;
+        da2 = b[t2 >> 1] | 0;
+        b[s2 >> 1] = da2;
+        b[t2 >> 1] = (da2 & 65535) + 65472;
+      }
+      if (!(b[_2 >> 1] | 0)) {
+        l = aa2;
+        return 0;
+      }
+      if ((b[d2 + 356 >> 1] | 0) == 0 ? (b[$2 >> 1] | 0) == 0 : 0) {
+        l = aa2;
+        return 0;
+      }
+      b[d2 >> 1] = 0;
+      b[d2 + 362 >> 1] = 1;
+      l = aa2;
+      return 0;
+    }
+    function La(a2, d2, e2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0;
+      h2 = (fb(e2) | 0) << 16 >> 16 >> 1;
+      h2 = ((fb(e2) | 0) << 16 >> 16 >> 1) + h2 << 16 >> 16;
+      g2 = c[d2 >> 2] | 0;
+      h2 = h2 << 16 >> 16;
+      h2 = (h2 * 75 | 0) == 1073741824 ? 2147483647 : h2 * 150 | 0;
+      f2 = h2 + g2 | 0;
+      f2 = (h2 ^ g2 | 0) > -1 & (f2 ^ g2 | 0) < 0 ? g2 >> 31 ^ 2147483647 : f2;
+      c[d2 >> 2] = (f2 | 0) > 0 ? f2 : 0;
+      d2 = (fb(e2) | 0) << 16 >> 16 >> 1;
+      d2 = ((fb(e2) | 0) << 16 >> 16 >> 1) + d2 << 16 >> 16;
+      f2 = b[a2 >> 1] | 0;
+      f2 = ((sb(d2, 256) | 0) << 16 >> 16) + (f2 << 16 >> 16) | 0;
+      d2 = f2 >> 31;
+      d2 = ((f2 >> 15 | 0) == (d2 | 0) ? f2 : d2 ^ 32767) & 65535;
+      b[a2 >> 1] = d2 << 16 >> 16 > 128 ? d2 : 128;
+      d2 = 256;
+      f2 = 1;
+      do {
+        h2 = (d2 << 16 >> 16) + 2 | 0;
+        g2 = h2 >> 31;
+        d2 = (h2 >> 15 | 0) == (g2 | 0) ? h2 : g2 ^ 32767;
+        g2 = (fb(e2) | 0) << 16 >> 16 >> 1;
+        g2 = ((fb(e2) | 0) << 16 >> 16 >> 1) + g2 << 16 >> 16;
+        h2 = a2 + (f2 << 1) | 0;
+        i2 = b[h2 >> 1] | 0;
+        i2 = ((sb(g2, d2 & 65535) | 0) << 16 >> 16) + (i2 << 16 >> 16) | 0;
+        g2 = i2 >> 31;
+        g2 = (i2 >> 15 | 0) == (g2 | 0) ? i2 : g2 ^ 32767;
+        i2 = b[a2 + (f2 + -1 << 1) >> 1] | 0;
+        k2 = (g2 << 16 >> 16) - (i2 << 16 >> 16) | 0;
+        j2 = k2 >> 31;
+        b[h2 >> 1] = (((k2 >> 15 | 0) == (j2 | 0) ? k2 : j2 ^ 32767) & 65535) << 16 >> 16 < 448 ? (i2 & 65535) + 448 | 0 : g2;
+        f2 = f2 + 1 | 0;
+      } while ((f2 | 0) != 15);
+      d2 = a2 + 28 | 0;
+      if ((b[d2 >> 1] | 0) <= 16384)
+        return;
+      b[d2 >> 1] = 16384;
+      return;
+    }
+    function Ma(c2, d2, e2) {
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0;
+      k2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      h2 = k2 + 2 | 0;
+      i2 = k2;
+      j2 = c2 + 348 | 0;
+      g2 = (b[j2 >> 1] | 0) + 1 << 16 >> 16;
+      g2 = g2 << 16 >> 16 == 8 ? 0 : g2;
+      b[j2 >> 1] = g2;
+      g2 = c2 + 76 + (g2 << 16 >> 16 << 4 << 1) | 0;
+      f2 = g2 + 32 | 0;
+      do {
+        a[g2 >> 0] = a[d2 >> 0] | 0;
+        g2 = g2 + 1 | 0;
+        d2 = d2 + 1 | 0;
+      } while ((g2 | 0) < (f2 | 0));
+      d2 = 0;
+      f2 = 0;
+      do {
+        n2 = b[e2 + (f2 << 1) >> 1] | 0;
+        n2 = N(n2, n2) | 0;
+        n2 = (n2 | 0) == 1073741824 ? 2147483647 : n2 << 1;
+        g2 = n2 + d2 | 0;
+        d2 = (n2 ^ d2 | 0) > -1 & (g2 ^ d2 | 0) < 0 ? d2 >> 31 ^ 2147483647 : g2;
+        f2 = f2 + 1 | 0;
+      } while ((f2 | 0) != 256);
+      zb(d2 >> 1, h2, i2);
+      n2 = b[h2 >> 1] | 0;
+      b[c2 + 332 + (b[j2 >> 1] << 1) >> 1] = ((b[i2 >> 1] | 0) >>> 8) + 64512 + ((n2 << 23 >> 23 | 0) == (n2 | 0) ? n2 << 7 : n2 >>> 15 ^ 32767);
+      l = k2;
+      return;
+    }
+    function Na(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      var d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      i2 = c2 + -4 << 16 >> 16;
+      d2 = b[a2 + 360 >> 1] | 0;
+      a:
+        do
+          if ((i2 & 65535) < 3)
+            f2 = 4;
+          else {
+            if ((d2 + -1 & 65535) < 2)
+              switch (c2 << 16 >> 16) {
+                case 2:
+                case 3:
+                case 7: {
+                  f2 = 4;
+                  break a;
+                }
+              }
+            d2 = 0;
+            e2 = a2;
+            f2 = 10;
+          }
+        while (0);
+      if ((f2 | 0) == 4) {
+        b:
+          do
+            if (d2 << 16 >> 16 == 2) {
+              switch (c2 << 16 >> 16) {
+                case 2:
+                case 4:
+                case 6:
+                case 7:
+                  break;
+                default: {
+                  d2 = 1;
+                  break b;
+                }
+              }
+              d2 = 2;
+            } else
+              d2 = 1;
+          while (0);
+        g2 = (b[a2 >> 1] | 0) + 1 | 0;
+        h2 = g2 >> 31;
+        h2 = ((g2 >> 15 | 0) == (h2 | 0) ? g2 : h2 ^ 32767) & 65535;
+        b[a2 >> 1] = h2;
+        d2 = h2 << 16 >> 16 > 50 ? 2 : d2;
+        if (c2 << 16 >> 16 == 5 & (b[a2 + 362 >> 1] | 0) == 0) {
+          e2 = a2 + 352 | 0;
+          f2 = 10;
+        }
+      }
+      if ((f2 | 0) == 10)
+        b[e2 >> 1] = 0;
+      g2 = a2 + 352 | 0;
+      h2 = (b[g2 >> 1] | 0) + 1 | 0;
+      e2 = h2 >> 31;
+      e2 = ((h2 >> 15 | 0) == (e2 | 0) ? h2 : e2 ^ 32767) & 65535;
+      b[g2 >> 1] = e2;
+      h2 = a2 + 358 | 0;
+      b[h2 >> 1] = 0;
+      do
+        if ((i2 & 65535) < 4) {
+          if (e2 << 16 >> 16 > 30) {
+            b[h2 >> 1] = 1;
+            b[g2 >> 1] = 0;
+            b[a2 + 350 >> 1] = 0;
+            break;
+          }
+          e2 = a2 + 350 | 0;
+          f2 = b[e2 >> 1] | 0;
+          if (!(f2 << 16 >> 16)) {
+            b[g2 >> 1] = 0;
+            break;
+          } else {
+            b[e2 >> 1] = f2 + -1 << 16 >> 16;
+            break;
+          }
+        } else
+          b[a2 + 350 >> 1] = 7;
+      while (0);
+      if (!(d2 << 16 >> 16))
+        return d2 | 0;
+      f2 = a2 + 354 | 0;
+      b[f2 >> 1] = 0;
+      e2 = a2 + 356 | 0;
+      b[e2 >> 1] = 0;
+      switch (c2 << 16 >> 16) {
+        case 4: {
+          b[f2 >> 1] = 1;
+          return d2 | 0;
+        }
+        case 5: {
+          b[f2 >> 1] = 1;
+          b[e2 >> 1] = 1;
+          return d2 | 0;
+        }
+        case 6: {
+          b[f2 >> 1] = 1;
+          b[h2 >> 1] = 0;
+          return d2 | 0;
+        }
+        default:
+          return d2 | 0;
+      }
+    }
+    function Oa(a2, d2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0;
+      e2 = a2 << 16 >> 16 >> 1;
+      if (!(e2 << 16 >> 16))
+        e2 = 0;
+      else {
+        h2 = c[d2 >> 2] | 0;
+        i2 = ((e2 + -1 & 65535) << 1) + 2 | 0;
+        g2 = 0;
+        f2 = h2;
+        while (1) {
+          j2 = g2 << 16 >> 14;
+          g2 = ((b[f2 >> 1] | 0) == 127 ? j2 | 2 : j2) | (b[f2 + 2 >> 1] | 0) == 127;
+          e2 = e2 + -1 << 16 >> 16;
+          if (!(e2 << 16 >> 16))
+            break;
+          else
+            f2 = f2 + 4 | 0;
+        }
+        c[d2 >> 2] = h2 + (i2 << 1);
+        e2 = g2 & 65535;
+      }
+      if (!(a2 & 1)) {
+        j2 = e2;
+        return j2 | 0;
+      }
+      e2 = e2 << 16 >> 16 << 1;
+      j2 = c[d2 >> 2] | 0;
+      c[d2 >> 2] = j2 + 2;
+      if ((b[j2 >> 1] | 0) != 127) {
+        j2 = e2 & 65535;
+        return j2 | 0;
+      }
+      j2 = (e2 | 1) & 65535;
+      return j2 | 0;
+    }
+    function Pa(a2) {
+      a2 = a2 | 0;
+      var d2 = 0;
+      d2 = c[a2 >> 2] | 0;
+      c[a2 >> 2] = d2 + 2;
+      return (b[d2 >> 1] | 0) == 127 | 0;
+    }
+    function Qa(b2) {
+      b2 = b2 | 0;
+      var c2 = 0;
+      c2 = b2 + 12 | 0;
+      do {
+        a[b2 >> 0] = 0;
+        b2 = b2 + 1 | 0;
+      } while ((b2 | 0) < (c2 | 0));
+      return;
+    }
+    function Ra(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0;
+      f2 = b[d2 >> 1] | 0;
+      o2 = d2 + 2 | 0;
+      j2 = b[o2 >> 1] | 0;
+      p2 = d2 + 4 | 0;
+      i2 = b[p2 >> 1] | 0;
+      q2 = d2 + 6 | 0;
+      e2 = b[q2 >> 1] | 0;
+      m2 = d2 + 8 | 0;
+      h2 = b[m2 >> 1] | 0;
+      n2 = d2 + 10 | 0;
+      g2 = b[n2 >> 1] | 0;
+      if (c2 << 16 >> 16 <= 0) {
+        a2 = g2;
+        l2 = h2;
+        k2 = e2;
+        b[d2 >> 1] = f2;
+        b[o2 >> 1] = j2;
+        b[p2 >> 1] = i2;
+        b[q2 >> 1] = k2;
+        b[m2 >> 1] = l2;
+        b[n2 >> 1] = a2;
+        return;
+      }
+      l2 = c2 & 65535;
+      k2 = g2;
+      c2 = j2;
+      j2 = 0;
+      while (1) {
+        r2 = (N(c2 << 16 >> 16, -14160) | 0) + 8192 + ((e2 << 16 >> 16) * 29280 | 0) | 0;
+        f2 = N(f2 << 16 >> 16, -14160) | 0;
+        c2 = a2 + (j2 << 1) | 0;
+        g2 = b[c2 >> 1] | 0;
+        f2 = ((N(h2 << 16 >> 16, -1830) | 0) + ((i2 << 16 >> 16) * 29280 | 0) + f2 + (((g2 << 16 >> 16) + (k2 << 16 >> 16) | 0) * 915 | 0) << 2) + (r2 >> 13) | 0;
+        b[c2 >> 1] = (f2 + 32768 | 0) >>> 16;
+        c2 = f2 >>> 16 & 65535;
+        f2 = f2 >>> 1 & 32767;
+        j2 = j2 + 1 | 0;
+        if ((j2 | 0) == (l2 | 0))
+          break;
+        else {
+          s2 = e2;
+          k2 = h2;
+          r2 = i2;
+          h2 = g2;
+          e2 = f2;
+          i2 = c2;
+          c2 = s2;
+          f2 = r2;
+        }
+      }
+      b[d2 >> 1] = i2;
+      b[o2 >> 1] = e2;
+      b[p2 >> 1] = c2;
+      b[q2 >> 1] = f2;
+      b[m2 >> 1] = g2;
+      b[n2 >> 1] = h2;
+      return;
+    }
+    function Sa(b2) {
+      b2 = b2 | 0;
+      var c2 = 0;
+      c2 = b2 + 12 | 0;
+      do {
+        a[b2 >> 0] = 0;
+        b2 = b2 + 1 | 0;
+      } while ((b2 | 0) < (c2 | 0));
+      return;
+    }
+    function Ta(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0;
+      f2 = b[d2 >> 1] | 0;
+      o2 = d2 + 2 | 0;
+      k2 = b[o2 >> 1] | 0;
+      p2 = d2 + 4 | 0;
+      i2 = b[p2 >> 1] | 0;
+      q2 = d2 + 6 | 0;
+      e2 = b[q2 >> 1] | 0;
+      m2 = d2 + 8 | 0;
+      h2 = b[m2 >> 1] | 0;
+      n2 = d2 + 10 | 0;
+      g2 = b[n2 >> 1] | 0;
+      if (!(c2 << 16 >> 16)) {
+        l2 = g2;
+        j2 = h2;
+        a2 = e2;
+        b[d2 >> 1] = f2;
+        b[o2 >> 1] = k2;
+        b[p2 >> 1] = i2;
+        b[q2 >> 1] = a2;
+        b[m2 >> 1] = j2;
+        b[n2 >> 1] = l2;
+        return;
+      } else {
+        l2 = c2;
+        j2 = g2;
+        c2 = k2;
+      }
+      while (1) {
+        k2 = (N(c2 << 16 >> 16, -8021) | 0) + 8192 + ((e2 << 16 >> 16) * 16211 | 0) | 0;
+        f2 = N(f2 << 16 >> 16, -16042) | 0;
+        g2 = b[a2 >> 1] | 0;
+        j2 = (N(h2 << 16 >> 16, -16212) | 0) + ((i2 << 16 >> 16) * 32422 | 0) + f2 + (k2 >> 14) + (((g2 << 16 >> 16) + (j2 << 16 >> 16) | 0) * 8106 | 0) | 0;
+        k2 = j2 << 2;
+        f2 = j2 >>> 14;
+        c2 = f2 & 65535;
+        f2 = (k2 - (f2 << 16) | 0) >>> 1 & 65535;
+        b[a2 >> 1] = (j2 << 3 >> 1 | 0) == (k2 | 0) ? (k2 + 16384 | 0) >>> 15 : k2 >> 31 ^ 32767;
+        l2 = l2 + -1 << 16 >> 16;
+        if (!(l2 << 16 >> 16))
+          break;
+        else {
+          r2 = e2;
+          j2 = h2;
+          k2 = i2;
+          h2 = g2;
+          e2 = f2;
+          i2 = c2;
+          a2 = a2 + 2 | 0;
+          c2 = r2;
+          f2 = k2;
+        }
+      }
+      b[d2 >> 1] = i2;
+      b[o2 >> 1] = e2;
+      b[p2 >> 1] = c2;
+      b[q2 >> 1] = f2;
+      b[m2 >> 1] = g2;
+      b[n2 >> 1] = h2;
+      return;
+    }
+    function Ua(a2, d2, e2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0;
+      n2 = l;
+      l = l + 80 | 0;
+      if ((l | 0) >= (m | 0))
+        W(80);
+      k2 = n2 + 8 | 0;
+      i2 = n2;
+      c[i2 >> 2] = a2;
+      switch (d2 | 0) {
+        case 8: {
+          b[k2 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 2 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 4 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 6 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 8 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 10 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 12 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 14 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 16 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 18 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 20 >> 1] = (Oa(15, i2) | 0) & 25087;
+          b[k2 + 22 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 24 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 26 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 28 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 30 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 32 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 34 >> 1] = (Oa(15, i2) | 0) & -7937;
+          b[k2 + 36 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 38 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 40 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 42 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 44 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 46 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 48 >> 1] = (Oa(15, i2) | 0) & 32527;
+          b[k2 + 50 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 52 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 54 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 56 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 58 >> 1] = Oa(15, i2) | 0;
+          b[k2 + 60 >> 1] = Oa(15, i2) | 0;
+          i2 = (Oa(8, i2) | 0) << 16 >> 16;
+          b[k2 + 62 >> 1] = (i2 << 23 >> 23 | 0) == (i2 | 0) ? i2 << 7 : i2 >>> 15 ^ 32767;
+          i2 = 0;
+          h2 = 31;
+          j2 = 9;
+          break;
+        }
+        case 9: {
+          k2 = 0;
+          l = n2;
+          return k2 | 0;
+        }
+        default: {
+          g2 = e2 << 16 >> 16;
+          h2 = (g2 << 16) + -983040 | 0;
+          f2 = h2 >> 16;
+          if ((h2 | 0) > 0) {
+            e2 = 0;
+            a2 = 0;
+            do {
+              b[k2 + (e2 << 16 >> 16 << 1) >> 1] = Oa(15, i2) | 0;
+              e2 = e2 + 1 << 16 >> 16;
+              a2 = (a2 << 16) + 983040 >> 16;
+            } while ((f2 | 0) > (a2 | 0));
+            h2 = e2;
+          } else {
+            h2 = 0;
+            a2 = 0;
+          }
+          e2 = g2 - a2 | 0;
+          a2 = Oa(e2 & 65535, i2) | 0;
+          f2 = k2 + (h2 << 16 >> 16 << 1) | 0;
+          b[f2 >> 1] = a2;
+          e2 = 15 - e2 | 0;
+          g2 = e2 & 65535;
+          e2 = e2 << 16 >> 16;
+          if (g2 << 16 >> 16 < 0)
+            a2 = a2 << 16 >> 16 >> (0 - e2 & 15);
+          else {
+            e2 = e2 & 15;
+            a2 = a2 << 16 >> 16;
+            i2 = a2 << e2;
+            a2 = (i2 << 16 >> 16 >> e2 | 0) == (a2 | 0) ? i2 : a2 >> 15 ^ 32767;
+          }
+          b[f2 >> 1] = a2;
+          if (h2 << 16 >> 16 > 0) {
+            i2 = g2;
+            j2 = 9;
+          } else {
+            h2 = g2;
+            g2 = 0;
+            f2 = 0;
+          }
+        }
+      }
+      a:
+        do
+          if ((j2 | 0) == 9) {
+            e2 = c[8 + (d2 << 2) >> 2] | 0;
+            a2 = 0;
+            f2 = 0;
+            while (1) {
+              g2 = b[e2 + (f2 << 1) >> 1] ^ b[k2 + (f2 << 1) >> 1];
+              a2 = a2 + 1 << 16 >> 16;
+              if (g2 << 16 >> 16) {
+                h2 = i2;
+                break a;
+              }
+              f2 = a2 << 16 >> 16;
+              if (a2 << 16 >> 16 >= h2 << 16 >> 16) {
+                h2 = i2;
+                g2 = 0;
+                break;
+              }
+            }
+          }
+        while (0);
+      a2 = h2 << 16 >> 16;
+      e2 = 32767 >>> a2;
+      if (h2 << 16 >> 16 < 0)
+        a2 = e2 << 16 >> 16 >> (0 - a2 & 15);
+      else {
+        h2 = a2 & 15;
+        a2 = e2 << 16;
+        i2 = a2 >> 16;
+        j2 = i2 << h2;
+        a2 = (j2 << 16 >> 16 >> h2 | 0) == (i2 | 0) ? j2 : a2 >> 31 ^ 32767;
+      }
+      k2 = (b[(c[8 + (d2 << 2) >> 2] | 0) + (f2 << 1) >> 1] & (a2 & 65535) ^ b[k2 + (f2 << 1) >> 1] | g2) << 16 >> 16 == 0 & 1;
+      l = n2;
+      return k2 | 0;
+    }
+    function Va(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      c2 = c2 << 16 >> 16;
+      return Ua(a2, c2, b[7682 + (c2 << 1) >> 1] | 0) | 0;
+    }
+    function Wa(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      c2 = c2 << 16 >> 16;
+      return Ua(a2, c2, b[746 + (c2 << 1) >> 1] | 0) | 0;
+    }
+    function Xa(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0;
+      k2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      j2 = k2;
+      g2 = b[d2 >> 1] | 0;
+      f2 = 32767 - g2 | 0;
+      h2 = f2 >> 31;
+      h2 = (((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) << 16 >> 16) + 1 | 0;
+      f2 = h2 >> 31;
+      f2 = ((h2 >> 15 | 0) == (f2 | 0) ? h2 : f2 ^ 32767) << 16 >> 16;
+      h2 = 0;
+      do {
+        n2 = N(f2, b[a2 + (h2 << 1) >> 1] | 0) | 0;
+        n2 = (n2 | 0) == 1073741824 ? 2147483647 : n2 << 1;
+        o2 = N(b[c2 + (h2 << 1) >> 1] | 0, g2) | 0;
+        o2 = (o2 | 0) == 1073741824 ? 2147483647 : o2 << 1;
+        i2 = o2 + n2 | 0;
+        i2 = (o2 ^ n2 | 0) > -1 & (i2 ^ n2 | 0) < 0 ? n2 >> 31 ^ 2147483647 : i2;
+        b[j2 + (h2 << 1) >> 1] = (i2 | 0) == 2147483647 ? 32767 : (i2 + 32768 | 0) >>> 16 & 65535;
+        h2 = h2 + 1 | 0;
+      } while ((h2 | 0) != 16);
+      Za(j2, e2, 16, 0);
+      f2 = e2 + 34 | 0;
+      g2 = b[d2 + 2 >> 1] | 0;
+      h2 = 32767 - g2 | 0;
+      i2 = h2 >> 31;
+      i2 = (((h2 >> 15 | 0) == (i2 | 0) ? h2 : i2 ^ 32767) << 16 >> 16) + 1 | 0;
+      h2 = i2 >> 31;
+      h2 = ((i2 >> 15 | 0) == (h2 | 0) ? i2 : h2 ^ 32767) << 16 >> 16;
+      i2 = 0;
+      do {
+        n2 = N(h2, b[a2 + (i2 << 1) >> 1] | 0) | 0;
+        n2 = (n2 | 0) == 1073741824 ? 2147483647 : n2 << 1;
+        p2 = N(b[c2 + (i2 << 1) >> 1] | 0, g2) | 0;
+        p2 = (p2 | 0) == 1073741824 ? 2147483647 : p2 << 1;
+        o2 = p2 + n2 | 0;
+        o2 = (p2 ^ n2 | 0) > -1 & (o2 ^ n2 | 0) < 0 ? n2 >> 31 ^ 2147483647 : o2;
+        b[j2 + (i2 << 1) >> 1] = (o2 | 0) == 2147483647 ? 32767 : (o2 + 32768 | 0) >>> 16 & 65535;
+        i2 = i2 + 1 | 0;
+      } while ((i2 | 0) != 16);
+      Za(j2, f2, 16, 0);
+      i2 = e2 + 68 | 0;
+      f2 = b[d2 + 4 >> 1] | 0;
+      g2 = 32767 - f2 | 0;
+      h2 = g2 >> 31;
+      h2 = (((g2 >> 15 | 0) == (h2 | 0) ? g2 : h2 ^ 32767) << 16 >> 16) + 1 | 0;
+      g2 = h2 >> 31;
+      g2 = ((h2 >> 15 | 0) == (g2 | 0) ? h2 : g2 ^ 32767) << 16 >> 16;
+      h2 = 0;
+      do {
+        o2 = N(g2, b[a2 + (h2 << 1) >> 1] | 0) | 0;
+        o2 = (o2 | 0) == 1073741824 ? 2147483647 : o2 << 1;
+        n2 = N(b[c2 + (h2 << 1) >> 1] | 0, f2) | 0;
+        n2 = (n2 | 0) == 1073741824 ? 2147483647 : n2 << 1;
+        p2 = n2 + o2 | 0;
+        p2 = (n2 ^ o2 | 0) > -1 & (p2 ^ o2 | 0) < 0 ? o2 >> 31 ^ 2147483647 : p2;
+        b[j2 + (h2 << 1) >> 1] = (p2 | 0) == 2147483647 ? 32767 : (p2 + 32768 | 0) >>> 16 & 65535;
+        h2 = h2 + 1 | 0;
+      } while ((h2 | 0) != 16);
+      Za(j2, i2, 16, 0);
+      Za(c2, e2 + 102 | 0, 16, 0);
+      l = k2;
+      return;
+    }
+    function Ya(a2) {
+      a2 = a2 | 0;
+      var d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0, F2 = 0, G2 = 0, H2 = 0, I2 = 0, J2 = 0, K2 = 0, L2 = 0, M2 = 0, O2 = 0, P2 = 0, Q2 = 0, R2 = 0, S2 = 0, T2 = 0, U2 = 0, V2 = 0, X2 = 0, Y2 = 0, Z2 = 0, _2 = 0, $2 = 0, aa2 = 0, ba2 = 0, ca2 = 0, da2 = 0;
+      aa2 = l;
+      l = l + 48 | 0;
+      if ((l | 0) >= (m | 0))
+        W(48);
+      H2 = aa2 + 16 | 0;
+      E2 = aa2;
+      F2 = aa2 + 14 | 0;
+      G2 = aa2 + 12 | 0;
+      U2 = a2 + 30 | 0;
+      b[a2 + 38 >> 1] = b[U2 >> 1] | 0;
+      Z2 = a2 + 2 | 0;
+      i2 = b[Z2 >> 1] | 0;
+      da2 = i2 - (b[a2 >> 1] | 0) | 0;
+      M2 = da2 >> 31;
+      b[H2 >> 1] = (da2 >> 15 | 0) == (M2 | 0) ? da2 : M2 ^ 32767;
+      M2 = a2 + 4 | 0;
+      da2 = b[M2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      P2 = i2 >> 31;
+      O2 = H2 + 2 | 0;
+      b[O2 >> 1] = (i2 >> 15 | 0) == (P2 | 0) ? i2 : P2 ^ 32767;
+      P2 = a2 + 6 | 0;
+      i2 = b[P2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      R2 = da2 >> 31;
+      Q2 = H2 + 4 | 0;
+      b[Q2 >> 1] = (da2 >> 15 | 0) == (R2 | 0) ? da2 : R2 ^ 32767;
+      R2 = a2 + 8 | 0;
+      da2 = b[R2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      T2 = i2 >> 31;
+      S2 = H2 + 6 | 0;
+      b[S2 >> 1] = (i2 >> 15 | 0) == (T2 | 0) ? i2 : T2 ^ 32767;
+      T2 = a2 + 10 | 0;
+      i2 = b[T2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      V2 = da2 >> 31;
+      z2 = H2 + 8 | 0;
+      b[z2 >> 1] = (da2 >> 15 | 0) == (V2 | 0) ? da2 : V2 ^ 32767;
+      V2 = a2 + 12 | 0;
+      da2 = b[V2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      X2 = i2 >> 31;
+      A2 = H2 + 10 | 0;
+      b[A2 >> 1] = (i2 >> 15 | 0) == (X2 | 0) ? i2 : X2 ^ 32767;
+      X2 = a2 + 14 | 0;
+      i2 = b[X2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      Y2 = da2 >> 31;
+      B2 = H2 + 12 | 0;
+      b[B2 >> 1] = (da2 >> 15 | 0) == (Y2 | 0) ? da2 : Y2 ^ 32767;
+      Y2 = a2 + 16 | 0;
+      da2 = b[Y2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      _2 = i2 >> 31;
+      C2 = H2 + 14 | 0;
+      b[C2 >> 1] = (i2 >> 15 | 0) == (_2 | 0) ? i2 : _2 ^ 32767;
+      _2 = a2 + 18 | 0;
+      i2 = b[_2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      $2 = da2 >> 31;
+      D2 = H2 + 16 | 0;
+      b[D2 >> 1] = (da2 >> 15 | 0) == ($2 | 0) ? da2 : $2 ^ 32767;
+      $2 = a2 + 20 | 0;
+      da2 = b[$2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      I2 = i2 >> 31;
+      d2 = H2 + 18 | 0;
+      b[d2 >> 1] = (i2 >> 15 | 0) == (I2 | 0) ? i2 : I2 ^ 32767;
+      I2 = a2 + 22 | 0;
+      i2 = b[I2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      J2 = da2 >> 31;
+      e2 = H2 + 20 | 0;
+      b[e2 >> 1] = (da2 >> 15 | 0) == (J2 | 0) ? da2 : J2 ^ 32767;
+      J2 = a2 + 24 | 0;
+      da2 = b[J2 >> 1] | 0;
+      i2 = da2 - i2 | 0;
+      K2 = i2 >> 31;
+      f2 = H2 + 22 | 0;
+      b[f2 >> 1] = (i2 >> 15 | 0) == (K2 | 0) ? i2 : K2 ^ 32767;
+      K2 = a2 + 26 | 0;
+      i2 = b[K2 >> 1] | 0;
+      da2 = i2 - da2 | 0;
+      L2 = da2 >> 31;
+      g2 = H2 + 24 | 0;
+      b[g2 >> 1] = (da2 >> 15 | 0) == (L2 | 0) ? da2 : L2 ^ 32767;
+      L2 = a2 + 28 | 0;
+      i2 = (b[L2 >> 1] | 0) - i2 | 0;
+      da2 = i2 >> 31;
+      h2 = H2 + 26 | 0;
+      b[h2 >> 1] = (i2 >> 15 | 0) == (da2 | 0) ? i2 : da2 ^ 32767;
+      da2 = b[Q2 >> 1] | 0;
+      da2 = (da2 * 2731 | 0) == 1073741824 ? 2147483647 : da2 * 5462 | 0;
+      i2 = b[S2 >> 1] | 0;
+      i2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      ca2 = i2 + da2 | 0;
+      ca2 = (i2 ^ da2 | 0) > -1 & (ca2 ^ da2 | 0) < 0 ? da2 >> 31 ^ 2147483647 : ca2;
+      da2 = b[z2 >> 1] | 0;
+      da2 = (da2 * 2731 | 0) == 1073741824 ? 2147483647 : da2 * 5462 | 0;
+      i2 = da2 + ca2 | 0;
+      i2 = (da2 ^ ca2 | 0) > -1 & (i2 ^ ca2 | 0) < 0 ? ca2 >> 31 ^ 2147483647 : i2;
+      ca2 = b[A2 >> 1] | 0;
+      ca2 = (ca2 * 2731 | 0) == 1073741824 ? 2147483647 : ca2 * 5462 | 0;
+      da2 = ca2 + i2 | 0;
+      da2 = (ca2 ^ i2 | 0) > -1 & (da2 ^ i2 | 0) < 0 ? i2 >> 31 ^ 2147483647 : da2;
+      i2 = b[B2 >> 1] | 0;
+      i2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      ca2 = i2 + da2 | 0;
+      ca2 = (i2 ^ da2 | 0) > -1 & (ca2 ^ da2 | 0) < 0 ? da2 >> 31 ^ 2147483647 : ca2;
+      da2 = b[C2 >> 1] | 0;
+      da2 = (da2 * 2731 | 0) == 1073741824 ? 2147483647 : da2 * 5462 | 0;
+      i2 = da2 + ca2 | 0;
+      i2 = (da2 ^ ca2 | 0) > -1 & (i2 ^ ca2 | 0) < 0 ? ca2 >> 31 ^ 2147483647 : i2;
+      ca2 = b[D2 >> 1] | 0;
+      ca2 = (ca2 * 2731 | 0) == 1073741824 ? 2147483647 : ca2 * 5462 | 0;
+      da2 = ca2 + i2 | 0;
+      da2 = (ca2 ^ i2 | 0) > -1 & (da2 ^ i2 | 0) < 0 ? i2 >> 31 ^ 2147483647 : da2;
+      i2 = b[d2 >> 1] | 0;
+      i2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      ca2 = i2 + da2 | 0;
+      ca2 = (i2 ^ da2 | 0) > -1 & (ca2 ^ da2 | 0) < 0 ? da2 >> 31 ^ 2147483647 : ca2;
+      da2 = b[e2 >> 1] | 0;
+      i2 = da2 << 16 >> 16;
+      i2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      w2 = i2 + ca2 | 0;
+      w2 = (i2 ^ ca2 | 0) > -1 & (w2 ^ ca2 | 0) < 0 ? ca2 >> 31 ^ 2147483647 : w2;
+      ca2 = b[f2 >> 1] | 0;
+      i2 = ca2 << 16 >> 16;
+      i2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      x2 = i2 + w2 | 0;
+      x2 = (i2 ^ w2 | 0) > -1 & (x2 ^ w2 | 0) < 0 ? w2 >> 31 ^ 2147483647 : x2;
+      w2 = b[g2 >> 1] | 0;
+      i2 = w2 << 16 >> 16;
+      j2 = (i2 * 2731 | 0) == 1073741824 ? 2147483647 : i2 * 5462 | 0;
+      y2 = j2 + x2 | 0;
+      y2 = (j2 ^ x2 | 0) > -1 & (y2 ^ x2 | 0) < 0 ? x2 >> 31 ^ 2147483647 : y2;
+      x2 = b[h2 >> 1] | 0;
+      j2 = x2 << 16 >> 16;
+      ba2 = (j2 * 2731 | 0) == 1073741824 ? 2147483647 : j2 * 5462 | 0;
+      v2 = ba2 + y2 | 0;
+      v2 = (ba2 ^ y2 | 0) > -1 & (v2 ^ y2 | 0) < 0 ? y2 >> 31 ^ 2147483647 : v2;
+      c[E2 >> 2] = 0;
+      y2 = b[H2 >> 1] | 0;
+      ba2 = y2 << 16 >> 16 > 0 ? y2 : 0;
+      k2 = b[O2 >> 1] | 0;
+      ba2 = k2 << 16 >> 16 > ba2 << 16 >> 16 ? k2 : ba2;
+      n2 = b[Q2 >> 1] | 0;
+      ba2 = n2 << 16 >> 16 > ba2 << 16 >> 16 ? n2 : ba2;
+      o2 = b[S2 >> 1] | 0;
+      ba2 = o2 << 16 >> 16 > ba2 << 16 >> 16 ? o2 : ba2;
+      p2 = b[z2 >> 1] | 0;
+      ba2 = p2 << 16 >> 16 > ba2 << 16 >> 16 ? p2 : ba2;
+      q2 = b[A2 >> 1] | 0;
+      ba2 = q2 << 16 >> 16 > ba2 << 16 >> 16 ? q2 : ba2;
+      r2 = b[B2 >> 1] | 0;
+      ba2 = r2 << 16 >> 16 > ba2 << 16 >> 16 ? r2 : ba2;
+      s2 = b[C2 >> 1] | 0;
+      ba2 = s2 << 16 >> 16 > ba2 << 16 >> 16 ? s2 : ba2;
+      t2 = b[D2 >> 1] | 0;
+      ba2 = t2 << 16 >> 16 > ba2 << 16 >> 16 ? t2 : ba2;
+      u2 = b[d2 >> 1] | 0;
+      ba2 = u2 << 16 >> 16 > ba2 << 16 >> 16 ? u2 : ba2;
+      ba2 = da2 << 16 >> 16 > ba2 << 16 >> 16 ? da2 : ba2;
+      ba2 = ca2 << 16 >> 16 > ba2 << 16 >> 16 ? ca2 : ba2;
+      ba2 = w2 << 16 >> 16 > ba2 << 16 >> 16 ? w2 : ba2;
+      v2 = (v2 | 0) == 2147483647 ? 32767 : (v2 + 32768 | 0) >>> 16 & 65535;
+      ba2 = ((gb((x2 << 16 >> 16 > ba2 << 16 >> 16 ? x2 : ba2) << 16 >> 16) | 0) & 65535) + 65520 | 0;
+      x2 = ba2 << 16 >> 16;
+      w2 = 0 - x2 & 15;
+      x2 = x2 & 15;
+      y2 = y2 << 16 >> 16;
+      if ((ba2 & 65535) << 16 >> 16 < 0) {
+        b[H2 >> 1] = y2 >> w2;
+        b[O2 >> 1] = k2 << 16 >> 16 >> w2;
+        b[Q2 >> 1] = n2 << 16 >> 16 >> w2;
+        b[S2 >> 1] = o2 << 16 >> 16 >> w2;
+        b[z2 >> 1] = p2 << 16 >> 16 >> w2;
+        b[A2 >> 1] = q2 << 16 >> 16 >> w2;
+        b[B2 >> 1] = r2 << 16 >> 16 >> w2;
+        da2 = s2 << 16 >> 16 >> w2 & 65535;
+        b[C2 >> 1] = da2;
+        b[D2 >> 1] = t2 << 16 >> 16 >> w2;
+        b[d2 >> 1] = u2 << 16 >> 16 >> w2;
+        b[e2 >> 1] = b[e2 >> 1] >> w2;
+        b[f2 >> 1] = b[f2 >> 1] >> w2;
+        b[g2 >> 1] = i2 >> w2;
+        b[h2 >> 1] = j2 >> w2;
+        d2 = v2 << 16 >> 16 >> w2;
+        e2 = da2;
+      } else {
+        da2 = y2 << x2;
+        b[H2 >> 1] = (da2 << 16 >> 16 >> x2 | 0) == (y2 | 0) ? da2 : y2 >>> 15 ^ 32767;
+        da2 = k2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[O2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = n2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[Q2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = o2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[S2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = p2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[z2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = q2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[A2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = r2 << 16 >> 16;
+        ca2 = da2 << x2;
+        b[B2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767;
+        da2 = s2 << 16 >> 16;
+        ca2 = da2 << x2;
+        da2 = ((ca2 << 16 >> 16 >> x2 | 0) == (da2 | 0) ? ca2 : da2 >>> 15 ^ 32767) & 65535;
+        b[C2 >> 1] = da2;
+        ca2 = t2 << 16 >> 16;
+        ba2 = ca2 << x2;
+        b[D2 >> 1] = (ba2 << 16 >> 16 >> x2 | 0) == (ca2 | 0) ? ba2 : ca2 >>> 15 ^ 32767;
+        ca2 = u2 << 16 >> 16;
+        ba2 = ca2 << x2;
+        b[d2 >> 1] = (ba2 << 16 >> 16 >> x2 | 0) == (ca2 | 0) ? ba2 : ca2 >>> 15 ^ 32767;
+        d2 = b[e2 >> 1] | 0;
+        ca2 = d2 << x2;
+        b[e2 >> 1] = (ca2 << 16 >> 16 >> x2 | 0) == (d2 | 0) ? ca2 : d2 >>> 15 ^ 32767;
+        d2 = b[f2 >> 1] | 0;
+        e2 = d2 << x2;
+        b[f2 >> 1] = (e2 << 16 >> 16 >> x2 | 0) == (d2 | 0) ? e2 : d2 >>> 15 ^ 32767;
+        d2 = b[g2 >> 1] | 0;
+        e2 = d2 << x2;
+        b[g2 >> 1] = (e2 << 16 >> 16 >> x2 | 0) == (d2 | 0) ? e2 : d2 >>> 15 ^ 32767;
+        d2 = b[h2 >> 1] | 0;
+        e2 = d2 << x2;
+        b[h2 >> 1] = (e2 << 16 >> 16 >> x2 | 0) == (d2 | 0) ? e2 : d2 >>> 15 ^ 32767;
+        d2 = v2 << 16 >> 16;
+        e2 = d2 << x2;
+        d2 = (e2 << 16 >> 16 >> x2 | 0) == (d2 | 0) ? e2 : d2 >> 15 ^ 32767;
+        e2 = da2;
+      }
+      i2 = d2 << 16 >> 16;
+      f2 = c[E2 >> 2] | 0;
+      d2 = 7;
+      while (1) {
+        ca2 = (e2 << 16 >> 16) - i2 | 0;
+        da2 = ca2 >> 31;
+        D2 = (b[H2 + (d2 + -2 << 1) >> 1] | 0) - i2 | 0;
+        ba2 = D2 >> 31;
+        da2 = N(((D2 >> 15 | 0) == (ba2 | 0) ? D2 : ba2 ^ 32767) << 16 >> 16, ((ca2 >> 15 | 0) == (da2 | 0) ? ca2 : da2 ^ 32767) << 16 >> 16) | 0;
+        Ab((da2 | 0) == 1073741824 ? 2147483647 : da2 << 1, F2, G2);
+        da2 = b[F2 >> 1] | 0;
+        ca2 = b[G2 >> 1] | 0;
+        ca2 = Bb(da2, ca2, da2, ca2) | 0;
+        da2 = f2 + ca2 | 0;
+        f2 = (f2 ^ ca2 | 0) > -1 & (da2 ^ f2 | 0) < 0 ? f2 >> 31 ^ 2147483647 : da2;
+        d2 = d2 + 1 | 0;
+        if ((d2 | 0) == 14)
+          break;
+        e2 = b[H2 + (d2 << 1) >> 1] | 0;
+      }
+      c[E2 >> 2] = f2;
+      d2 = E2 + 4 | 0;
+      c[d2 >> 2] = 0;
+      h2 = 0;
+      e2 = 7;
+      do {
+        ca2 = (b[H2 + (e2 << 1) >> 1] | 0) - i2 | 0;
+        da2 = ca2 >> 31;
+        D2 = (b[H2 + (e2 + -3 << 1) >> 1] | 0) - i2 | 0;
+        ba2 = D2 >> 31;
+        da2 = N(((D2 >> 15 | 0) == (ba2 | 0) ? D2 : ba2 ^ 32767) << 16 >> 16, ((ca2 >> 15 | 0) == (da2 | 0) ? ca2 : da2 ^ 32767) << 16 >> 16) | 0;
+        Ab((da2 | 0) == 1073741824 ? 2147483647 : da2 << 1, F2, G2);
+        da2 = b[F2 >> 1] | 0;
+        ca2 = b[G2 >> 1] | 0;
+        ca2 = Bb(da2, ca2, da2, ca2) | 0;
+        da2 = h2 + ca2 | 0;
+        h2 = (h2 ^ ca2 | 0) > -1 & (da2 ^ h2 | 0) < 0 ? h2 >> 31 ^ 2147483647 : da2;
+        e2 = e2 + 1 | 0;
+      } while ((e2 | 0) != 14);
+      c[d2 >> 2] = h2;
+      e2 = E2 + 8 | 0;
+      c[e2 >> 2] = 0;
+      d2 = 0;
+      g2 = 7;
+      do {
+        ca2 = (b[H2 + (g2 << 1) >> 1] | 0) - i2 | 0;
+        da2 = ca2 >> 31;
+        D2 = (b[H2 + (g2 + -4 << 1) >> 1] | 0) - i2 | 0;
+        ba2 = D2 >> 31;
+        da2 = N(((D2 >> 15 | 0) == (ba2 | 0) ? D2 : ba2 ^ 32767) << 16 >> 16, ((ca2 >> 15 | 0) == (da2 | 0) ? ca2 : da2 ^ 32767) << 16 >> 16) | 0;
+        Ab((da2 | 0) == 1073741824 ? 2147483647 : da2 << 1, F2, G2);
+        da2 = b[F2 >> 1] | 0;
+        ca2 = b[G2 >> 1] | 0;
+        ca2 = Bb(da2, ca2, da2, ca2) | 0;
+        da2 = d2 + ca2 | 0;
+        d2 = (d2 ^ ca2 | 0) > -1 & (da2 ^ d2 | 0) < 0 ? d2 >> 31 ^ 2147483647 : da2;
+        g2 = g2 + 1 | 0;
+      } while ((g2 | 0) != 14);
+      c[e2 >> 2] = d2;
+      i2 = (f2 | 0) <= (h2 | 0);
+      i2 = (d2 | 0) > (c[E2 + ((i2 & 1) << 2) >> 2] | 0) ? 3 : i2 ? 2 : 1;
+      d2 = -2 - i2 | 0;
+      j2 = (b[a2 + (14 - i2 << 1) >> 1] | 0) - (b[a2 + (d2 + 15 << 1) >> 1] | 0) | 0;
+      h2 = j2 >> 31;
+      h2 = (((j2 >> 15 | 0) == (h2 | 0) ? j2 : h2 ^ 32767) << 16 >> 16) + (b[L2 >> 1] | 0) | 0;
+      j2 = h2 >> 31;
+      j2 = (h2 >> 15 | 0) == (j2 | 0) ? h2 : j2 ^ 32767;
+      b[U2 >> 1] = j2;
+      h2 = (b[a2 + ((i2 ^ 15) << 1) >> 1] | 0) - (b[a2 + (d2 + 16 << 1) >> 1] | 0) | 0;
+      k2 = h2 >> 31;
+      j2 = (((h2 >> 15 | 0) == (k2 | 0) ? h2 : k2 ^ 32767) << 16 >> 16) + (j2 << 16 >> 16) | 0;
+      k2 = j2 >> 31;
+      k2 = (j2 >> 15 | 0) == (k2 | 0) ? j2 : k2 ^ 32767;
+      j2 = a2 + 32 | 0;
+      b[j2 >> 1] = k2;
+      h2 = (b[a2 + (16 - i2 << 1) >> 1] | 0) - (b[a2 + (d2 + 17 << 1) >> 1] | 0) | 0;
+      n2 = h2 >> 31;
+      k2 = (((h2 >> 15 | 0) == (n2 | 0) ? h2 : n2 ^ 32767) << 16 >> 16) + (k2 << 16 >> 16) | 0;
+      n2 = k2 >> 31;
+      n2 = (k2 >> 15 | 0) == (n2 | 0) ? k2 : n2 ^ 32767;
+      k2 = a2 + 34 | 0;
+      b[k2 >> 1] = n2;
+      d2 = (b[a2 + (17 - i2 << 1) >> 1] | 0) - (b[a2 + (d2 + 18 << 1) >> 1] | 0) | 0;
+      i2 = d2 >> 31;
+      n2 = (((d2 >> 15 | 0) == (i2 | 0) ? d2 : i2 ^ 32767) << 16 >> 16) + (n2 << 16 >> 16) | 0;
+      i2 = n2 >> 31;
+      i2 = (n2 >> 15 | 0) == (i2 | 0) ? n2 : i2 ^ 32767;
+      n2 = a2 + 36 | 0;
+      b[n2 >> 1] = i2;
+      d2 = (b[P2 >> 1] | 0) + (b[R2 >> 1] | 0) | 0;
+      h2 = d2 >> 31;
+      h2 = (b[M2 >> 1] | 0) - (((d2 >> 15 | 0) == (h2 | 0) ? d2 : h2 ^ 32767) << 16 >> 16) | 0;
+      d2 = h2 >> 31;
+      d2 = (((h2 >> 15 | 0) == (d2 | 0) ? h2 : d2 ^ 32767) << 16 >> 16) * 5461 | 0;
+      h2 = d2 >> 31;
+      h2 = (((d2 >> 30 | 0) == (h2 | 0) ? d2 >>> 15 : h2 ^ 32767) << 16) + 1336279040 | 0;
+      d2 = b[L2 >> 1] | 0;
+      h2 = ((h2 | 0) > 1275068416 ? 19456 : h2 >> 16) - d2 | 0;
+      e2 = h2 >> 31;
+      d2 = (i2 << 16 >> 16) - d2 | 0;
+      i2 = d2 >> 31;
+      i2 = ((d2 >> 15 | 0) == (i2 | 0) ? d2 : i2 ^ 32767) << 16 >> 16;
+      d2 = (gb(i2) | 0) & 65535;
+      e2 = ((h2 >> 15 | 0) == (e2 | 0) ? h2 : e2 ^ 32767) << 16 >> 16;
+      h2 = (((gb(e2) | 0) & 65535) << 16) + -1114112 >> 16;
+      d2 = (d2 << 16) + -1048576 >> 16;
+      da2 = d2 - h2 | 0;
+      d2 = (ub(e2 << h2 & 65535, i2 << d2 & 65535) | 0) << 16 >> 16;
+      i2 = da2 << 16 >> 16;
+      h2 = 0 - i2 & 15;
+      i2 = i2 & 15;
+      e2 = b[U2 >> 1] | 0;
+      g2 = e2 - (b[L2 >> 1] | 0) | 0;
+      f2 = g2 >> 31;
+      f2 = N(((g2 >> 15 | 0) == (f2 | 0) ? g2 : f2 ^ 32767) << 16 >> 16, d2) | 0;
+      g2 = f2 >> 31;
+      g2 = ((f2 >> 30 | 0) == (g2 | 0) ? f2 >>> 15 : g2 ^ 32767) << 16;
+      f2 = g2 >> 16;
+      if ((da2 & 65535) << 16 >> 16 < 0) {
+        g2 = f2 >> h2 & 65535;
+        b[H2 >> 1] = g2;
+        da2 = b[j2 >> 1] | 0;
+        ca2 = da2 - e2 | 0;
+        f2 = ca2 >> 31;
+        f2 = N(((ca2 >> 15 | 0) == (f2 | 0) ? ca2 : f2 ^ 32767) << 16 >> 16, d2) | 0;
+        ca2 = f2 >> 31;
+        ca2 = ((f2 >> 30 | 0) == (ca2 | 0) ? f2 >>> 15 : ca2 ^ 32767) << 16 >> 16 >> h2 & 65535;
+        b[O2 >> 1] = ca2;
+        f2 = b[k2 >> 1] | 0;
+        e2 = f2 - da2 | 0;
+        da2 = e2 >> 31;
+        da2 = N(((e2 >> 15 | 0) == (da2 | 0) ? e2 : da2 ^ 32767) << 16 >> 16, d2) | 0;
+        e2 = da2 >> 31;
+        e2 = ((da2 >> 30 | 0) == (e2 | 0) ? da2 >>> 15 : e2 ^ 32767) << 16 >> 16 >> h2 & 65535;
+        b[Q2 >> 1] = e2;
+        f2 = (b[n2 >> 1] | 0) - f2 | 0;
+        da2 = f2 >> 31;
+        da2 = N(((f2 >> 15 | 0) == (da2 | 0) ? f2 : da2 ^ 32767) << 16 >> 16, d2) | 0;
+        f2 = da2 >> 31;
+        d2 = ca2;
+        f2 = ((da2 >> 30 | 0) == (f2 | 0) ? da2 >>> 15 : f2 ^ 32767) << 16 >> 16 >> h2;
+      } else {
+        da2 = f2 << i2;
+        g2 = ((da2 << 16 >> 16 >> i2 | 0) == (f2 | 0) ? da2 : g2 >> 31 ^ 32767) & 65535;
+        b[H2 >> 1] = g2;
+        da2 = b[j2 >> 1] | 0;
+        ba2 = da2 - e2 | 0;
+        e2 = ba2 >> 31;
+        e2 = N(((ba2 >> 15 | 0) == (e2 | 0) ? ba2 : e2 ^ 32767) << 16 >> 16, d2) | 0;
+        ba2 = e2 >> 31;
+        ba2 = ((e2 >> 30 | 0) == (ba2 | 0) ? e2 >>> 15 : ba2 ^ 32767) << 16;
+        e2 = ba2 >> 16;
+        f2 = e2 << i2;
+        ba2 = ((f2 << 16 >> 16 >> i2 | 0) == (e2 | 0) ? f2 : ba2 >> 31 ^ 32767) & 65535;
+        b[O2 >> 1] = ba2;
+        f2 = b[k2 >> 1] | 0;
+        e2 = f2 - da2 | 0;
+        da2 = e2 >> 31;
+        da2 = N(((e2 >> 15 | 0) == (da2 | 0) ? e2 : da2 ^ 32767) << 16 >> 16, d2) | 0;
+        e2 = da2 >> 31;
+        e2 = ((da2 >> 30 | 0) == (e2 | 0) ? da2 >>> 15 : e2 ^ 32767) << 16;
+        da2 = e2 >> 16;
+        ca2 = da2 << i2;
+        e2 = ((ca2 << 16 >> 16 >> i2 | 0) == (da2 | 0) ? ca2 : e2 >> 31 ^ 32767) & 65535;
+        b[Q2 >> 1] = e2;
+        f2 = (b[n2 >> 1] | 0) - f2 | 0;
+        ca2 = f2 >> 31;
+        ca2 = N(((f2 >> 15 | 0) == (ca2 | 0) ? f2 : ca2 ^ 32767) << 16 >> 16, d2) | 0;
+        f2 = ca2 >> 31;
+        f2 = ((ca2 >> 30 | 0) == (f2 | 0) ? ca2 >>> 15 : f2 ^ 32767) << 16;
+        ca2 = f2 >> 16;
+        da2 = ca2 << i2;
+        d2 = ba2;
+        f2 = (da2 << 16 >> 16 >> i2 | 0) == (ca2 | 0) ? da2 : f2 >> 31 ^ 32767;
+      }
+      b[S2 >> 1] = f2;
+      if ((((g2 & 65535) + (d2 & 65535) << 16) + -83886080 | 0) < 0) {
+        e2 = d2 << 16 >> 16 > g2 << 16 >> 16;
+        b[H2 + (((e2 ^ 1) & 1) << 1) >> 1] = 1280 - ((e2 ? d2 : g2) & 65535);
+        e2 = b[Q2 >> 1] | 0;
+        d2 = b[O2 >> 1] | 0;
+      }
+      if ((((d2 & 65535) + (e2 & 65535) << 16) + -83886080 | 0) < 0) {
+        da2 = e2 << 16 >> 16 > d2 << 16 >> 16;
+        b[H2 + ((da2 ? 1 : 2) << 1) >> 1] = 1280 - ((da2 ? e2 : d2) & 65535);
+        e2 = b[Q2 >> 1] | 0;
+      }
+      d2 = b[S2 >> 1] | 0;
+      if ((((e2 & 65535) + (d2 & 65535) << 16) + -83886080 | 0) >= 0) {
+        da2 = e2;
+        ca2 = d2;
+        ba2 = b[L2 >> 1] | 0;
+        S2 = b[H2 >> 1] | 0;
+        ba2 = ba2 << 16 >> 16;
+        S2 = S2 << 16 >> 16;
+        ba2 = S2 + ba2 | 0;
+        S2 = ba2 >> 15;
+        Q2 = ba2 >> 31;
+        S2 = (S2 | 0) == (Q2 | 0);
+        Q2 = Q2 ^ 32767;
+        Q2 = S2 ? ba2 : Q2;
+        ba2 = Q2 & 65535;
+        b[U2 >> 1] = ba2;
+        ba2 = b[O2 >> 1] | 0;
+        Q2 = Q2 << 16;
+        Q2 = Q2 >> 16;
+        ba2 = ba2 << 16 >> 16;
+        ba2 = Q2 + ba2 | 0;
+        Q2 = ba2 >> 15;
+        S2 = ba2 >> 31;
+        Q2 = (Q2 | 0) == (S2 | 0);
+        S2 = S2 ^ 32767;
+        S2 = Q2 ? ba2 : S2;
+        ba2 = S2 & 65535;
+        b[j2 >> 1] = ba2;
+        S2 = S2 << 16;
+        S2 = S2 >> 16;
+        da2 = da2 << 16 >> 16;
+        da2 = S2 + da2 | 0;
+        S2 = da2 >> 15;
+        ba2 = da2 >> 31;
+        S2 = (S2 | 0) == (ba2 | 0);
+        ba2 = ba2 ^ 32767;
+        ba2 = S2 ? da2 : ba2;
+        da2 = ba2 & 65535;
+        b[k2 >> 1] = da2;
+        ba2 = ba2 << 16;
+        ba2 = ba2 >> 16;
+        ca2 = ca2 << 16 >> 16;
+        ca2 = ba2 + ca2 | 0;
+        ba2 = ca2 >> 15;
+        da2 = ca2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[n2 >> 1] = da2;
+        da2 = b[a2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[a2 >> 1] = da2;
+        da2 = b[Z2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[Z2 >> 1] = da2;
+        da2 = b[M2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[M2 >> 1] = da2;
+        da2 = b[P2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[P2 >> 1] = da2;
+        da2 = b[R2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[R2 >> 1] = da2;
+        da2 = b[T2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[T2 >> 1] = da2;
+        da2 = b[V2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[V2 >> 1] = da2;
+        da2 = b[X2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[X2 >> 1] = da2;
+        da2 = b[Y2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[Y2 >> 1] = da2;
+        da2 = b[_2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[_2 >> 1] = da2;
+        da2 = b[$2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[$2 >> 1] = da2;
+        da2 = b[I2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[I2 >> 1] = da2;
+        da2 = b[J2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[J2 >> 1] = da2;
+        da2 = b[K2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[K2 >> 1] = da2;
+        da2 = b[L2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[L2 >> 1] = da2;
+        da2 = b[U2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[U2 >> 1] = da2;
+        da2 = b[j2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[j2 >> 1] = da2;
+        da2 = b[k2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[k2 >> 1] = da2;
+        da2 = b[n2 >> 1] | 0;
+        da2 = da2 << 16 >> 16;
+        da2 = da2 * 26214 | 0;
+        ca2 = da2 >>> 15;
+        ba2 = da2 >> 30;
+        da2 = da2 >> 31;
+        ba2 = (ba2 | 0) == (da2 | 0);
+        da2 = da2 ^ 32767;
+        da2 = ba2 ? ca2 : da2;
+        da2 = da2 & 65535;
+        b[n2 >> 1] = da2;
+        _a(a2, a2, 20);
+        l = aa2;
+        return;
+      }
+      da2 = d2 << 16 >> 16 > e2 << 16 >> 16;
+      b[H2 + ((da2 ? 2 : 3) << 1) >> 1] = 1280 - ((da2 ? d2 : e2) & 65535);
+      da2 = b[Q2 >> 1] | 0;
+      ca2 = b[S2 >> 1] | 0;
+      ba2 = b[L2 >> 1] | 0;
+      S2 = b[H2 >> 1] | 0;
+      ba2 = ba2 << 16 >> 16;
+      S2 = S2 << 16 >> 16;
+      ba2 = S2 + ba2 | 0;
+      S2 = ba2 >> 15;
+      Q2 = ba2 >> 31;
+      S2 = (S2 | 0) == (Q2 | 0);
+      Q2 = Q2 ^ 32767;
+      Q2 = S2 ? ba2 : Q2;
+      ba2 = Q2 & 65535;
+      b[U2 >> 1] = ba2;
+      ba2 = b[O2 >> 1] | 0;
+      Q2 = Q2 << 16;
+      Q2 = Q2 >> 16;
+      ba2 = ba2 << 16 >> 16;
+      ba2 = Q2 + ba2 | 0;
+      Q2 = ba2 >> 15;
+      S2 = ba2 >> 31;
+      Q2 = (Q2 | 0) == (S2 | 0);
+      S2 = S2 ^ 32767;
+      S2 = Q2 ? ba2 : S2;
+      ba2 = S2 & 65535;
+      b[j2 >> 1] = ba2;
+      S2 = S2 << 16;
+      S2 = S2 >> 16;
+      da2 = da2 << 16 >> 16;
+      da2 = S2 + da2 | 0;
+      S2 = da2 >> 15;
+      ba2 = da2 >> 31;
+      S2 = (S2 | 0) == (ba2 | 0);
+      ba2 = ba2 ^ 32767;
+      ba2 = S2 ? da2 : ba2;
+      da2 = ba2 & 65535;
+      b[k2 >> 1] = da2;
+      ba2 = ba2 << 16;
+      ba2 = ba2 >> 16;
+      ca2 = ca2 << 16 >> 16;
+      ca2 = ba2 + ca2 | 0;
+      ba2 = ca2 >> 15;
+      da2 = ca2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[n2 >> 1] = da2;
+      da2 = b[a2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[a2 >> 1] = da2;
+      da2 = b[Z2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[Z2 >> 1] = da2;
+      da2 = b[M2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[M2 >> 1] = da2;
+      da2 = b[P2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[P2 >> 1] = da2;
+      da2 = b[R2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[R2 >> 1] = da2;
+      da2 = b[T2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[T2 >> 1] = da2;
+      da2 = b[V2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[V2 >> 1] = da2;
+      da2 = b[X2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[X2 >> 1] = da2;
+      da2 = b[Y2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[Y2 >> 1] = da2;
+      da2 = b[_2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[_2 >> 1] = da2;
+      da2 = b[$2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[$2 >> 1] = da2;
+      da2 = b[I2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[I2 >> 1] = da2;
+      da2 = b[J2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[J2 >> 1] = da2;
+      da2 = b[K2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[K2 >> 1] = da2;
+      da2 = b[L2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[L2 >> 1] = da2;
+      da2 = b[U2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[U2 >> 1] = da2;
+      da2 = b[j2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[j2 >> 1] = da2;
+      da2 = b[k2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[k2 >> 1] = da2;
+      da2 = b[n2 >> 1] | 0;
+      da2 = da2 << 16 >> 16;
+      da2 = da2 * 26214 | 0;
+      ca2 = da2 >>> 15;
+      ba2 = da2 >> 30;
+      da2 = da2 >> 31;
+      ba2 = (ba2 | 0) == (da2 | 0);
+      da2 = da2 ^ 32767;
+      da2 = ba2 ? ca2 : da2;
+      da2 = da2 & 65535;
+      b[n2 >> 1] = da2;
+      _a(a2, a2, 20);
+      l = aa2;
+      return;
+    }
+    function Za(a2, d2, f2, g2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      var h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0, F2 = 0, G2 = 0, H2 = 0;
+      H2 = l;
+      l = l + 96 | 0;
+      if ((l | 0) >= (m | 0))
+        W(96);
+      E2 = H2 + 40 | 0;
+      F2 = H2;
+      G2 = f2 << 16 >> 16;
+      C2 = f2 << 16 >> 16 >> 1;
+      D2 = C2 << 16 >> 16;
+      if (C2 << 16 >> 16 > 8) {
+        c[E2 >> 2] = 2097152;
+        c[E2 + 4 >> 2] = 0 - (b[a2 >> 1] | 0) << 7;
+        w2 = C2 + -1 & 65535;
+        j2 = E2 + 8 | 0;
+        s2 = a2;
+        u2 = 0;
+        v2 = 2;
+        while (1) {
+          n2 = 0 - u2 | 0;
+          s2 = s2 + 4 | 0;
+          i2 = c[j2 + -8 >> 2] | 0;
+          c[j2 >> 2] = i2;
+          t2 = b[s2 >> 1] | 0;
+          o2 = (t2 & 65535) << 16;
+          p2 = ((o2 | 0) < 0) << 31 >> 31;
+          f2 = 1;
+          k2 = j2;
+          h2 = i2;
+          while (1) {
+            q2 = k2 + -4 | 0;
+            r2 = c[q2 >> 2] | 0;
+            bc(r2 | 0, ((r2 | 0) < 0) << 31 >> 31 | 0, o2 | 0, p2 | 0) | 0;
+            B2 = y;
+            A2 = dc(B2 | 0, 0, 2) | 0;
+            c[k2 >> 2] = i2 + h2 - ((A2 >> 2 | 0) == (B2 | 0) ? A2 : B2 >> 31 ^ 2147483647);
+            f2 = f2 + 1 << 16 >> 16;
+            if ((v2 | 0) <= (f2 << 16 >> 16 | 0))
+              break;
+            h2 = c[k2 + -12 >> 2] | 0;
+            k2 = q2;
+            i2 = r2;
+          }
+          f2 = j2 + -4 + (n2 << 2) | 0;
+          c[f2 >> 2] = (c[f2 >> 2] | 0) - (t2 << 16 >> 16 << 7);
+          u2 = u2 + 1 | 0;
+          if ((u2 | 0) == (w2 | 0))
+            break;
+          else {
+            j2 = f2 + (v2 << 2) | 0;
+            v2 = v2 + 1 | 0;
+          }
+        }
+        if (C2 << 16 >> 16 >= 0) {
+          h2 = C2 + 1 & 65535;
+          f2 = 0;
+          do {
+            B2 = E2 + (f2 << 2) | 0;
+            A2 = c[B2 >> 2] | 0;
+            z2 = A2 << 2;
+            c[B2 >> 2] = (z2 >> 2 | 0) == (A2 | 0) ? z2 : A2 >> 31 ^ 2147483647;
+            f2 = f2 + 1 | 0;
+          } while ((f2 | 0) != (h2 | 0));
+        }
+        f2 = a2 + 2 | 0;
+        z2 = D2 + 65535 | 0;
+        x2 = z2 & 65535;
+        c[F2 >> 2] = 2097152;
+        c[F2 + 4 >> 2] = 0 - (b[f2 >> 1] | 0) << 7;
+        if (x2 << 16 >> 16 >= 2) {
+          w2 = z2 << 16 >> 16;
+          s2 = F2 + 8 | 0;
+          u2 = 0;
+          v2 = 2;
+          while (1) {
+            n2 = 0 - u2 | 0;
+            f2 = f2 + 4 | 0;
+            j2 = c[s2 + -8 >> 2] | 0;
+            c[s2 >> 2] = j2;
+            t2 = b[f2 >> 1] | 0;
+            o2 = (t2 & 65535) << 16;
+            p2 = ((o2 | 0) < 0) << 31 >> 31;
+            h2 = 1;
+            k2 = s2;
+            i2 = j2;
+            while (1) {
+              q2 = k2 + -4 | 0;
+              r2 = c[q2 >> 2] | 0;
+              bc(r2 | 0, ((r2 | 0) < 0) << 31 >> 31 | 0, o2 | 0, p2 | 0) | 0;
+              B2 = y;
+              A2 = dc(B2 | 0, 0, 2) | 0;
+              c[k2 >> 2] = j2 + i2 - ((A2 >> 2 | 0) == (B2 | 0) ? A2 : B2 >> 31 ^ 2147483647);
+              h2 = h2 + 1 << 16 >> 16;
+              if ((v2 | 0) <= (h2 << 16 >> 16 | 0))
+                break;
+              i2 = c[k2 + -12 >> 2] | 0;
+              k2 = q2;
+              j2 = r2;
+            }
+            h2 = s2 + -4 + (n2 << 2) | 0;
+            c[h2 >> 2] = (c[h2 >> 2] | 0) - (t2 << 16 >> 16 << 7);
+            if ((v2 | 0) >= (w2 | 0))
+              break;
+            else {
+              s2 = h2 + (v2 << 2) | 0;
+              u2 = u2 + 1 | 0;
+              v2 = v2 + 1 | 0;
+            }
+          }
+        }
+        if (C2 << 16 >> 16 > 0) {
+          h2 = C2 & 65535;
+          f2 = 0;
+          do {
+            B2 = F2 + (f2 << 2) | 0;
+            A2 = c[B2 >> 2] | 0;
+            w2 = A2 << 2;
+            c[B2 >> 2] = (w2 >> 2 | 0) == (A2 | 0) ? w2 : A2 >> 31 ^ 2147483647;
+            f2 = f2 + 1 | 0;
+          } while ((f2 | 0) != (h2 | 0));
+          w2 = z2;
+          B2 = 31;
+        } else {
+          w2 = z2;
+          B2 = 31;
+        }
+      } else {
+        c[E2 >> 2] = 8388608;
+        c[E2 + 4 >> 2] = 0 - (b[a2 >> 1] | 0) << 9;
+        if (C2 << 16 >> 16 >= 2) {
+          j2 = E2 + 8 | 0;
+          s2 = a2;
+          u2 = 0;
+          v2 = 2;
+          while (1) {
+            n2 = 0 - u2 | 0;
+            s2 = s2 + 4 | 0;
+            i2 = c[j2 + -8 >> 2] | 0;
+            c[j2 >> 2] = i2;
+            t2 = b[s2 >> 1] | 0;
+            o2 = (t2 & 65535) << 16;
+            p2 = ((o2 | 0) < 0) << 31 >> 31;
+            f2 = 1;
+            k2 = j2;
+            h2 = i2;
+            while (1) {
+              q2 = k2 + -4 | 0;
+              r2 = c[q2 >> 2] | 0;
+              bc(r2 | 0, ((r2 | 0) < 0) << 31 >> 31 | 0, o2 | 0, p2 | 0) | 0;
+              A2 = y;
+              z2 = dc(A2 | 0, 0, 2) | 0;
+              c[k2 >> 2] = i2 + h2 - ((z2 >> 2 | 0) == (A2 | 0) ? z2 : A2 >> 31 ^ 2147483647);
+              f2 = f2 + 1 << 16 >> 16;
+              if ((v2 | 0) <= (f2 << 16 >> 16 | 0))
+                break;
+              h2 = c[k2 + -12 >> 2] | 0;
+              k2 = q2;
+              i2 = r2;
+            }
+            f2 = j2 + -4 + (n2 << 2) | 0;
+            c[f2 >> 2] = (c[f2 >> 2] | 0) - (t2 << 16 >> 16 << 9);
+            if ((v2 | 0) >= (D2 | 0))
+              break;
+            else {
+              j2 = f2 + (v2 << 2) | 0;
+              u2 = u2 + 1 | 0;
+              v2 = v2 + 1 | 0;
+            }
+          }
+        }
+        f2 = a2 + 2 | 0;
+        z2 = D2 + 65535 | 0;
+        A2 = z2 & 65535;
+        c[F2 >> 2] = 8388608;
+        c[F2 + 4 >> 2] = 0 - (b[f2 >> 1] | 0) << 9;
+        if (A2 << 16 >> 16 >= 2) {
+          w2 = z2 << 16 >> 16;
+          s2 = F2 + 8 | 0;
+          u2 = 0;
+          v2 = 2;
+          while (1) {
+            n2 = 0 - u2 | 0;
+            f2 = f2 + 4 | 0;
+            j2 = c[s2 + -8 >> 2] | 0;
+            c[s2 >> 2] = j2;
+            t2 = b[f2 >> 1] | 0;
+            o2 = (t2 & 65535) << 16;
+            p2 = ((o2 | 0) < 0) << 31 >> 31;
+            h2 = 1;
+            k2 = s2;
+            i2 = j2;
+            while (1) {
+              q2 = k2 + -4 | 0;
+              r2 = c[q2 >> 2] | 0;
+              bc(r2 | 0, ((r2 | 0) < 0) << 31 >> 31 | 0, o2 | 0, p2 | 0) | 0;
+              B2 = y;
+              x2 = dc(B2 | 0, 0, 2) | 0;
+              c[k2 >> 2] = j2 + i2 - ((x2 >> 2 | 0) == (B2 | 0) ? x2 : B2 >> 31 ^ 2147483647);
+              h2 = h2 + 1 << 16 >> 16;
+              if ((v2 | 0) <= (h2 << 16 >> 16 | 0))
+                break;
+              i2 = c[k2 + -12 >> 2] | 0;
+              k2 = q2;
+              j2 = r2;
+            }
+            h2 = s2 + -4 + (n2 << 2) | 0;
+            c[h2 >> 2] = (c[h2 >> 2] | 0) - (t2 << 16 >> 16 << 9);
+            if ((v2 | 0) >= (w2 | 0)) {
+              x2 = A2;
+              w2 = z2;
+              B2 = 31;
+              break;
+            } else {
+              s2 = h2 + (v2 << 2) | 0;
+              u2 = u2 + 1 | 0;
+              v2 = v2 + 1 | 0;
+            }
+          }
+        }
+      }
+      if ((B2 | 0) == 31 ? x2 << 16 >> 16 > 1 : 0) {
+        f2 = w2 << 16 >> 16;
+        while (1) {
+          B2 = F2 + (f2 << 2) | 0;
+          c[B2 >> 2] = (c[B2 >> 2] | 0) - (c[F2 + (f2 + -2 << 2) >> 2] | 0);
+          if ((f2 | 0) > 2)
+            f2 = f2 + -1 | 0;
+          else
+            break;
+        }
+      }
+      q2 = G2 + -1 | 0;
+      if (C2 << 16 >> 16 > 0) {
+        f2 = e[a2 + (q2 << 1) >> 1] << 16;
+        h2 = ((f2 | 0) < 0) << 31 >> 31;
+        j2 = C2 & 65535;
+        i2 = 0;
+        do {
+          x2 = E2 + (i2 << 2) | 0;
+          w2 = c[x2 >> 2] | 0;
+          B2 = F2 + (i2 << 2) | 0;
+          z2 = c[B2 >> 2] | 0;
+          v2 = bc(f2 | 0, h2 | 0, w2 | 0, ((w2 | 0) < 0) << 31 >> 31 | 0) | 0;
+          v2 = cc(v2 | 0, y | 0, 31) | 0;
+          A2 = bc(f2 | 0, h2 | 0, z2 | 0, ((z2 | 0) < 0) << 31 >> 31 | 0) | 0;
+          A2 = cc(A2 | 0, y | 0, 31) | 0;
+          c[x2 >> 2] = (v2 & -2) + w2;
+          c[B2 >> 2] = z2 - (A2 & -2);
+          i2 = i2 + 1 | 0;
+        } while ((i2 | 0) != (j2 | 0));
+        b[d2 >> 1] = 4096;
+        n2 = q2 & 65535;
+        k2 = C2 << 16 >> 16 > 1;
+        if (k2) {
+          j2 = C2 & 65535;
+          h2 = n2;
+          f2 = 1;
+          i2 = 1;
+          while (1) {
+            w2 = c[E2 + (i2 << 2) >> 2] | 0;
+            B2 = c[F2 + (i2 << 2) >> 2] | 0;
+            v2 = B2 + w2 | 0;
+            x2 = B2 ^ w2;
+            A2 = w2 >> 31 ^ 2147483647;
+            v2 = (x2 | 0) > -1 & (v2 ^ w2 | 0) < 0 ? A2 : v2;
+            z2 = v2 - (v2 >>> 31) | 0;
+            b[d2 + (i2 << 1) >> 1] = (v2 >>> 11 & 1) + (v2 >>> 12);
+            B2 = w2 - B2 | 0;
+            B2 = ((B2 ^ w2) & x2 | 0) < 0 ? A2 : B2;
+            A2 = B2 - (B2 >>> 31) | 0;
+            f2 = z2 >> 31 ^ z2 | f2 | A2 >> 31 ^ A2;
+            b[d2 + (h2 << 16 >> 16 << 1) >> 1] = (B2 >>> 11 & 1) + (B2 >>> 12);
+            i2 = i2 + 1 | 0;
+            if ((i2 | 0) == (j2 | 0)) {
+              h2 = n2;
+              break;
+            } else
+              h2 = h2 + -1 << 16 >> 16;
+          }
+        } else {
+          f2 = 1;
+          k2 = 0;
+          h2 = n2;
+        }
+      } else {
+        b[d2 >> 1] = 4096;
+        f2 = 1;
+        k2 = 0;
+        h2 = q2 & 65535;
+      }
+      if (g2 << 16 >> 16 != 1) {
+        B2 = 12;
+        F2 = 3;
+        C2 = E2 + (D2 << 2) | 0;
+        C2 = c[C2 >> 2] | 0;
+        g2 = (C2 | 0) < 0;
+        g2 = g2 << 31 >> 31;
+        E2 = a2 + (q2 << 1) | 0;
+        a2 = b[E2 >> 1] | 0;
+        a2 = a2 << 16 >> 16;
+        A2 = (a2 | 0) < 0;
+        A2 = A2 << 31 >> 31;
+        g2 = bc(a2 | 0, A2 | 0, C2 | 0, g2 | 0) | 0;
+        A2 = y;
+        A2 = cc(g2 | 0, A2 | 0, 15) | 0;
+        g2 = A2 & -2;
+        g2 = g2 + C2 | 0;
+        A2 = C2 ^ A2;
+        A2 = (A2 | 0) > -1;
+        a2 = g2 ^ C2;
+        a2 = (a2 | 0) < 0;
+        a2 = A2 & a2;
+        C2 = C2 >> 31;
+        C2 = C2 ^ 2147483647;
+        g2 = a2 ? C2 : g2;
+        C2 = g2 >> B2;
+        a2 = B2 + -1 | 0;
+        a2 = g2 >>> a2;
+        a2 = a2 & 1;
+        C2 = a2 + C2 | 0;
+        C2 = C2 & 65535;
+        a2 = d2 + (D2 << 1) | 0;
+        b[a2 >> 1] = C2;
+        E2 = b[E2 >> 1] | 0;
+        F2 = tb(E2, F2) | 0;
+        G2 = d2 + (G2 << 1) | 0;
+        b[G2 >> 1] = F2;
+        l = H2;
+        return;
+      }
+      o2 = gb(f2) | 0;
+      g2 = 4 - (o2 & 65535) | 0;
+      f2 = g2 << 16;
+      p2 = f2 >> 16;
+      if ((g2 & 65535) << 16 >> 16 <= 0) {
+        B2 = 12;
+        F2 = 3;
+        C2 = E2 + (D2 << 2) | 0;
+        C2 = c[C2 >> 2] | 0;
+        g2 = (C2 | 0) < 0;
+        g2 = g2 << 31 >> 31;
+        E2 = a2 + (q2 << 1) | 0;
+        a2 = b[E2 >> 1] | 0;
+        a2 = a2 << 16 >> 16;
+        A2 = (a2 | 0) < 0;
+        A2 = A2 << 31 >> 31;
+        g2 = bc(a2 | 0, A2 | 0, C2 | 0, g2 | 0) | 0;
+        A2 = y;
+        A2 = cc(g2 | 0, A2 | 0, 15) | 0;
+        g2 = A2 & -2;
+        g2 = g2 + C2 | 0;
+        A2 = C2 ^ A2;
+        A2 = (A2 | 0) > -1;
+        a2 = g2 ^ C2;
+        a2 = (a2 | 0) < 0;
+        a2 = A2 & a2;
+        C2 = C2 >> 31;
+        C2 = C2 ^ 2147483647;
+        g2 = a2 ? C2 : g2;
+        C2 = g2 >> B2;
+        a2 = B2 + -1 | 0;
+        a2 = g2 >>> a2;
+        a2 = a2 & 1;
+        C2 = a2 + C2 | 0;
+        C2 = C2 & 65535;
+        a2 = d2 + (D2 << 1) | 0;
+        b[a2 >> 1] = C2;
+        E2 = b[E2 >> 1] | 0;
+        F2 = tb(E2, F2) | 0;
+        G2 = d2 + (G2 << 1) | 0;
+        b[G2 >> 1] = F2;
+        l = H2;
+        return;
+      }
+      n2 = f2 + 786432 >> 16;
+      if (k2) {
+        j2 = n2 + -1 | 0;
+        i2 = C2 & 65535;
+        f2 = h2;
+        h2 = 1;
+        while (1) {
+          A2 = c[E2 + (h2 << 2) >> 2] | 0;
+          C2 = c[F2 + (h2 << 2) >> 2] | 0;
+          z2 = C2 + A2 | 0;
+          B2 = C2 ^ A2;
+          g2 = A2 >> 31 ^ 2147483647;
+          z2 = (B2 | 0) > -1 & (z2 ^ A2 | 0) < 0 ? g2 : z2;
+          b[d2 + (h2 << 1) >> 1] = (z2 >>> j2 & 1) + (z2 >> n2);
+          C2 = A2 - C2 | 0;
+          C2 = ((C2 ^ A2) & B2 | 0) < 0 ? g2 : C2;
+          b[d2 + (f2 << 16 >> 16 << 1) >> 1] = (C2 >>> j2 & 1) + (C2 >> n2);
+          h2 = h2 + 1 | 0;
+          if ((h2 | 0) == (i2 | 0))
+            break;
+          else
+            f2 = f2 + -1 << 16 >> 16;
+        }
+      }
+      b[d2 >> 1] = b[d2 >> 1] >> p2;
+      B2 = n2;
+      F2 = (4 - o2 & 65535) + 3 & 65535;
+      C2 = E2 + (D2 << 2) | 0;
+      C2 = c[C2 >> 2] | 0;
+      g2 = (C2 | 0) < 0;
+      g2 = g2 << 31 >> 31;
+      E2 = a2 + (q2 << 1) | 0;
+      a2 = b[E2 >> 1] | 0;
+      a2 = a2 << 16 >> 16;
+      A2 = (a2 | 0) < 0;
+      A2 = A2 << 31 >> 31;
+      g2 = bc(a2 | 0, A2 | 0, C2 | 0, g2 | 0) | 0;
+      A2 = y;
+      A2 = cc(g2 | 0, A2 | 0, 15) | 0;
+      g2 = A2 & -2;
+      g2 = g2 + C2 | 0;
+      A2 = C2 ^ A2;
+      A2 = (A2 | 0) > -1;
+      a2 = g2 ^ C2;
+      a2 = (a2 | 0) < 0;
+      a2 = A2 & a2;
+      C2 = C2 >> 31;
+      C2 = C2 ^ 2147483647;
+      g2 = a2 ? C2 : g2;
+      C2 = g2 >> B2;
+      a2 = B2 + -1 | 0;
+      a2 = g2 >>> a2;
+      a2 = a2 & 1;
+      C2 = a2 + C2 | 0;
+      C2 = C2 & 65535;
+      a2 = d2 + (D2 << 1) | 0;
+      b[a2 >> 1] = C2;
+      E2 = b[E2 >> 1] | 0;
+      F2 = tb(E2, F2) | 0;
+      G2 = d2 + (G2 << 1) | 0;
+      b[G2 >> 1] = F2;
+      l = H2;
+      return;
+    }
+    function _a(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      g2 = (d2 << 16 >> 16) + -1 | 0;
+      if (d2 << 16 >> 16 > 1) {
+        f2 = 0;
+        h2 = 0;
+        do {
+          b[c2 + (h2 << 1) >> 1] = b[a2 + (h2 << 1) >> 1] | 0;
+          f2 = f2 + 1 << 16 >> 16;
+          h2 = f2 << 16 >> 16;
+        } while ((g2 | 0) > (h2 | 0));
+      }
+      h2 = b[a2 + (g2 << 1) >> 1] | 0;
+      b[c2 + (g2 << 1) >> 1] = (h2 << 17 >> 17 | 0) == (h2 | 0) ? h2 << 1 : h2 >>> 15 ^ 32767;
+      if (d2 << 16 >> 16 <= 0)
+        return;
+      a2 = d2 & 65535;
+      f2 = 0;
+      do {
+        h2 = c2 + (f2 << 1) | 0;
+        g2 = b[h2 >> 1] | 0;
+        i2 = g2 << 16 >> 16 >> 7 << 16 >> 16;
+        d2 = b[764 + (i2 << 1) >> 1] | 0;
+        g2 = N((e[764 + (i2 + 1 << 1) >> 1] | 0) - (d2 & 65535) << 16 >> 16, g2 & 127) | 0;
+        d2 = ((g2 | 0) == 1073741824 ? -1 : g2 >>> 7 << 16 >> 16) + (d2 << 16 >> 16) | 0;
+        g2 = d2 >> 31;
+        b[h2 >> 1] = (d2 >> 15 | 0) == (g2 | 0) ? d2 : g2 ^ 32767;
+        f2 = f2 + 1 | 0;
+      } while ((f2 | 0) != (a2 | 0));
+      return;
+    }
+    function $a(a2) {
+      a2 = a2 | 0;
+      b[a2 >> 1] = 64;
+      b[a2 + 2 >> 1] = 64;
+      b[a2 + 4 >> 1] = 64;
+      b[a2 + 6 >> 1] = 64;
+      b[a2 + 8 >> 1] = 64;
+      return;
+    }
+    function ab(a2, c2, d2, e2, f2, g2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      var h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0;
+      w2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      t2 = w2;
+      b[t2 >> 1] = 0;
+      b[t2 + 2 >> 1] = 0;
+      b[t2 + 4 >> 1] = 0;
+      b[t2 + 6 >> 1] = 0;
+      b[t2 + 8 >> 1] = 0;
+      s2 = b[a2 + 8 >> 1] | 0;
+      q2 = b[a2 + 6 >> 1] | 0;
+      h2 = b[c2 >> 1] | 0;
+      i2 = b[c2 + 2 >> 1] | 0;
+      u2 = i2 << 16 >> 16 < h2 << 16 >> 16 ? i2 : h2;
+      v2 = i2 << 16 >> 16 > h2 << 16 >> 16 ? i2 : h2;
+      j2 = b[c2 + 4 >> 1] | 0;
+      u2 = j2 << 16 >> 16 < u2 << 16 >> 16 ? j2 : u2;
+      v2 = j2 << 16 >> 16 > v2 << 16 >> 16 ? j2 : v2;
+      k2 = b[c2 + 6 >> 1] | 0;
+      u2 = k2 << 16 >> 16 < u2 << 16 >> 16 ? k2 : u2;
+      v2 = k2 << 16 >> 16 > v2 << 16 >> 16 ? k2 : v2;
+      n2 = b[c2 + 8 >> 1] | 0;
+      u2 = n2 << 16 >> 16 < u2 << 16 >> 16 ? n2 : u2;
+      v2 = n2 << 16 >> 16 > v2 << 16 >> 16 ? n2 : v2;
+      o2 = b[a2 >> 1] | 0;
+      p2 = b[a2 + 2 >> 1] | 0;
+      o2 = p2 << 16 >> 16 < o2 << 16 >> 16 ? p2 : o2;
+      p2 = b[a2 + 4 >> 1] | 0;
+      o2 = p2 << 16 >> 16 < o2 << 16 >> 16 ? p2 : o2;
+      o2 = q2 << 16 >> 16 < o2 << 16 >> 16 ? q2 : o2;
+      p2 = s2 << 16 >> 16 < o2 << 16 >> 16 ? s2 : o2;
+      a2 = u2 << 16 >> 16;
+      x2 = (v2 << 16 >> 16) - a2 | 0;
+      r2 = x2 >> 31;
+      r2 = ((x2 >> 15 | 0) == (r2 | 0) ? x2 : r2 ^ 32767) & 65535;
+      if (g2 << 16 >> 16) {
+        if (!(r2 << 16 >> 16 < 10 & p2 << 16 >> 16 > 8192)) {
+          if (!(s2 << 16 >> 16 > 8192 & q2 << 16 >> 16 > 8192)) {
+            b[t2 >> 1] = b[c2 >> 1] | 0;
+            b[t2 + 2 >> 1] = b[c2 + 2 >> 1] | 0;
+            b[t2 + 4 >> 1] = b[c2 + 4 >> 1] | 0;
+            b[t2 + 6 >> 1] = b[c2 + 6 >> 1] | 0;
+            b[t2 + 8 >> 1] = b[c2 + 8 >> 1] | 0;
+            h2 = b[t2 >> 1] | 0;
+            a2 = b[t2 + 2 >> 1] | 0;
+            if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+              b[t2 + 2 >> 1] = h2;
+              h2 = 0;
+            } else
+              h2 = 1;
+            b[t2 + (h2 << 1) >> 1] = a2;
+            k2 = t2 + 4 | 0;
+            a2 = b[k2 >> 1] | 0;
+            h2 = b[t2 + 2 >> 1] | 0;
+            if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+              b[t2 + 4 >> 1] = h2;
+              h2 = b[t2 >> 1] | 0;
+              if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+                b[t2 + 2 >> 1] = h2;
+                h2 = 0;
+              } else
+                h2 = 1;
+            } else
+              h2 = 2;
+            b[t2 + (h2 << 1) >> 1] = a2;
+            j2 = t2 + 6 | 0;
+            a2 = b[j2 >> 1] | 0;
+            h2 = b[t2 + 4 >> 1] | 0;
+            if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+              b[t2 + 6 >> 1] = h2;
+              h2 = b[t2 + 2 >> 1] | 0;
+              if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+                b[t2 + 4 >> 1] = h2;
+                h2 = b[t2 >> 1] | 0;
+                if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+                  b[t2 + 2 >> 1] = h2;
+                  h2 = 0;
+                } else
+                  h2 = 1;
+              } else
+                h2 = 2;
+            } else
+              h2 = 3;
+            b[t2 + (h2 << 1) >> 1] = a2;
+            a2 = t2 + 8 | 0;
+            i2 = b[a2 >> 1] | 0;
+            h2 = b[t2 + 6 >> 1] | 0;
+            if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+              b[t2 + 8 >> 1] = h2;
+              h2 = b[t2 + 4 >> 1] | 0;
+              if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+                b[t2 + 6 >> 1] = h2;
+                h2 = b[t2 + 2 >> 1] | 0;
+                if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+                  b[t2 + 4 >> 1] = h2;
+                  h2 = b[t2 >> 1] | 0;
+                  if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+                    b[t2 + 2 >> 1] = h2;
+                    h2 = 0;
+                  } else
+                    h2 = 1;
+                } else
+                  h2 = 2;
+              } else
+                h2 = 3;
+            } else
+              h2 = 4;
+            b[t2 + (h2 << 1) >> 1] = i2;
+            t2 = b[a2 >> 1] | 0;
+            s2 = b[k2 >> 1] | 0;
+            x2 = t2 - s2 | 0;
+            h2 = x2 >> 31;
+            h2 = ((x2 >> 15 | 0) == (h2 | 0) ? x2 : h2 ^ 32767) & 65535;
+            h2 = N((h2 << 16 >> 16 < 40 ? h2 : 40) << 16 >> 16 >> 1 << 16 >> 16, (fb(f2) | 0) << 16 >> 16) | 0;
+            x2 = h2 >> 31;
+            s2 = (b[j2 >> 1] | 0) + s2 | 0;
+            f2 = s2 >> 31;
+            t2 = (((s2 >> 15 | 0) == (f2 | 0) ? s2 : f2 ^ 32767) << 16 >> 16) + t2 | 0;
+            f2 = t2 >> 31;
+            f2 = (((t2 >> 15 | 0) == (f2 | 0) ? t2 : f2 ^ 32767) << 16 >> 16) * 10923 | 0;
+            t2 = f2 >> 31;
+            x2 = (((f2 >> 30 | 0) == (t2 | 0) ? f2 >>> 15 : t2 ^ 32767) << 16 >> 16) + (((h2 >> 30 | 0) == (x2 | 0) ? h2 >>> 15 : x2 ^ 32767) << 16 >> 16) | 0;
+            h2 = x2 >> 31;
+            h2 = ((x2 >> 15 | 0) == (h2 | 0) ? x2 : h2 ^ 32767) & 65535;
+          }
+        } else
+          h2 = b[e2 >> 1] | 0;
+        x2 = h2 << 16 >> 16 > v2 << 16 >> 16 ? v2 : h2;
+        b[d2 >> 1] = x2 << 16 >> 16 < u2 << 16 >> 16 ? u2 : x2;
+        l = w2;
+        return;
+      }
+      g2 = h2 << 16 >> 16;
+      x2 = g2 >> 31;
+      x2 = ((g2 >> 15 | 0) == (x2 | 0) ? g2 : x2 ^ 32767) + (i2 << 16 >> 16) | 0;
+      i2 = x2 >> 31;
+      i2 = (((x2 >> 15 | 0) == (i2 | 0) ? x2 : i2 ^ 32767) << 16 >> 16) + (j2 << 16 >> 16) | 0;
+      j2 = i2 >> 31;
+      j2 = (((i2 >> 15 | 0) == (j2 | 0) ? i2 : j2 ^ 32767) << 16 >> 16) + (k2 << 16 >> 16) | 0;
+      i2 = j2 >> 31;
+      i2 = (((j2 >> 15 | 0) == (i2 | 0) ? j2 : i2 ^ 32767) << 16 >> 16) + (n2 << 16 >> 16) | 0;
+      j2 = i2 >> 31;
+      j2 = (((i2 >> 15 | 0) == (j2 | 0) ? i2 : j2 ^ 32767) << 16 >> 16) * 6554 | 0;
+      i2 = j2 >> 31;
+      i2 = ((j2 >> 30 | 0) == (i2 | 0) ? j2 >>> 15 : i2 ^ 32767) & 65535;
+      j2 = b[d2 >> 1] | 0;
+      x2 = j2 << 16 >> 16;
+      k2 = x2 - (h2 & 65535) | 0;
+      n2 = r2 << 16 >> 16 < 10;
+      if (n2 ? (a2 + -5 | 0) < (x2 | 0) & (x2 - (v2 & 65535) << 16 | 0) < 327680 : 0) {
+        l = w2;
+        return;
+      }
+      a2 = s2 << 16 >> 16 > 8192 & q2 << 16 >> 16 > 8192;
+      if (a2 ? ((k2 << 16) + 655359 | 0) >>> 0 < 1310719 : 0) {
+        l = w2;
+        return;
+      }
+      if ((p2 << 16 >> 16 < 6554 ? s2 << 16 >> 16 <= o2 << 16 >> 16 : 0) ? j2 << 16 >> 16 > u2 << 16 >> 16 ? j2 << 16 >> 16 < v2 << 16 >> 16 : 0 : 0) {
+        l = w2;
+        return;
+      }
+      if (r2 << 16 >> 16 < 70 ? j2 << 16 >> 16 > u2 << 16 >> 16 ? j2 << 16 >> 16 < v2 << 16 >> 16 : 0 : 0) {
+        l = w2;
+        return;
+      }
+      if (j2 << 16 >> 16 > i2 << 16 >> 16 ? j2 << 16 >> 16 < v2 << 16 >> 16 : 0) {
+        l = w2;
+        return;
+      }
+      if (!(n2 & p2 << 16 >> 16 > 8192 | a2)) {
+        b[t2 >> 1] = b[c2 >> 1] | 0;
+        b[t2 + 2 >> 1] = b[c2 + 2 >> 1] | 0;
+        b[t2 + 4 >> 1] = b[c2 + 4 >> 1] | 0;
+        b[t2 + 6 >> 1] = b[c2 + 6 >> 1] | 0;
+        b[t2 + 8 >> 1] = b[c2 + 8 >> 1] | 0;
+        h2 = b[t2 >> 1] | 0;
+        a2 = b[t2 + 2 >> 1] | 0;
+        if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+          b[t2 + 2 >> 1] = h2;
+          h2 = 0;
+        } else
+          h2 = 1;
+        b[t2 + (h2 << 1) >> 1] = a2;
+        k2 = t2 + 4 | 0;
+        a2 = b[k2 >> 1] | 0;
+        h2 = b[t2 + 2 >> 1] | 0;
+        if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+          b[t2 + 4 >> 1] = h2;
+          h2 = b[t2 >> 1] | 0;
+          if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+            b[t2 + 2 >> 1] = h2;
+            h2 = 0;
+          } else
+            h2 = 1;
+        } else
+          h2 = 2;
+        b[t2 + (h2 << 1) >> 1] = a2;
+        j2 = t2 + 6 | 0;
+        a2 = b[j2 >> 1] | 0;
+        h2 = b[t2 + 4 >> 1] | 0;
+        if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+          b[t2 + 6 >> 1] = h2;
+          h2 = b[t2 + 2 >> 1] | 0;
+          if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+            b[t2 + 4 >> 1] = h2;
+            h2 = b[t2 >> 1] | 0;
+            if (h2 << 16 >> 16 > a2 << 16 >> 16) {
+              b[t2 + 2 >> 1] = h2;
+              h2 = 0;
+            } else
+              h2 = 1;
+          } else
+            h2 = 2;
+        } else
+          h2 = 3;
+        b[t2 + (h2 << 1) >> 1] = a2;
+        a2 = t2 + 8 | 0;
+        i2 = b[a2 >> 1] | 0;
+        h2 = b[t2 + 6 >> 1] | 0;
+        if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+          b[t2 + 8 >> 1] = h2;
+          h2 = b[t2 + 4 >> 1] | 0;
+          if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+            b[t2 + 6 >> 1] = h2;
+            h2 = b[t2 + 2 >> 1] | 0;
+            if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+              b[t2 + 4 >> 1] = h2;
+              h2 = b[t2 >> 1] | 0;
+              if (h2 << 16 >> 16 > i2 << 16 >> 16) {
+                b[t2 + 2 >> 1] = h2;
+                h2 = 0;
+              } else
+                h2 = 1;
+            } else
+              h2 = 2;
+          } else
+            h2 = 3;
+        } else
+          h2 = 4;
+        b[t2 + (h2 << 1) >> 1] = i2;
+        t2 = b[a2 >> 1] | 0;
+        s2 = b[k2 >> 1] | 0;
+        x2 = t2 - s2 | 0;
+        h2 = x2 >> 31;
+        h2 = ((x2 >> 15 | 0) == (h2 | 0) ? x2 : h2 ^ 32767) & 65535;
+        h2 = N((h2 << 16 >> 16 < 40 ? h2 : 40) << 16 >> 16 >> 1 << 16 >> 16, (fb(f2) | 0) << 16 >> 16) | 0;
+        x2 = h2 >> 31;
+        s2 = (b[j2 >> 1] | 0) + s2 | 0;
+        f2 = s2 >> 31;
+        t2 = (((s2 >> 15 | 0) == (f2 | 0) ? s2 : f2 ^ 32767) << 16 >> 16) + t2 | 0;
+        f2 = t2 >> 31;
+        f2 = (((t2 >> 15 | 0) == (f2 | 0) ? t2 : f2 ^ 32767) << 16 >> 16) * 10923 | 0;
+        t2 = f2 >> 31;
+        x2 = (((f2 >> 30 | 0) == (t2 | 0) ? f2 >>> 15 : t2 ^ 32767) << 16 >> 16) + (((h2 >> 30 | 0) == (x2 | 0) ? h2 >>> 15 : x2 ^ 32767) << 16 >> 16) | 0;
+        h2 = x2 >> 31;
+        h2 = ((x2 >> 15 | 0) == (h2 | 0) ? x2 : h2 ^ 32767) & 65535;
+      }
+      x2 = h2 << 16 >> 16 > v2 << 16 >> 16 ? v2 : h2;
+      b[d2 >> 1] = x2 << 16 >> 16 < u2 << 16 >> 16 ? u2 : x2;
+      l = w2;
+      return;
+    }
+    function bb(b2) {
+      b2 = b2 | 0;
+      var c2 = 0;
+      c2 = b2 + 60 | 0;
+      do {
+        a[b2 >> 0] = 0;
+        b2 = b2 + 1 | 0;
+      } while ((b2 | 0) < (c2 | 0));
+      return;
+    }
+    function cb(c2, d2, f2, g2) {
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      var h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0;
+      h2 = g2;
+      i2 = f2;
+      j2 = h2 + 60 | 0;
+      do {
+        a[h2 >> 0] = a[i2 >> 0] | 0;
+        h2 = h2 + 1 | 0;
+        i2 = i2 + 1 | 0;
+      } while ((h2 | 0) < (j2 | 0));
+      s2 = d2 << 16 >> 16;
+      t2 = s2 >> 2;
+      if ((t2 | 0) > 0) {
+        d2 = 0;
+        v2 = 0;
+      } else {
+        i2 = g2 + (s2 << 1) | 0;
+        h2 = f2;
+        j2 = h2 + 60 | 0;
+        do {
+          a[h2 >> 0] = a[i2 >> 0] | 0;
+          h2 = h2 + 1 | 0;
+          i2 = i2 + 1 | 0;
+        } while ((h2 | 0) < (j2 | 0));
+        return;
+      }
+      do {
+        u2 = v2 << 16 >> 16 << 2;
+        r2 = d2 << 2;
+        k2 = c2 + (r2 << 1) | 0;
+        b[g2 + (r2 + 30 << 1) >> 1] = b[k2 >> 1] | 0;
+        o2 = r2 | 1;
+        l2 = c2 + (o2 << 1) | 0;
+        b[g2 + (r2 + 31 << 1) >> 1] = b[l2 >> 1] | 0;
+        i2 = r2 | 2;
+        m2 = c2 + (i2 << 1) | 0;
+        b[g2 + (r2 + 32 << 1) >> 1] = b[m2 >> 1] | 0;
+        h2 = r2 | 3;
+        n2 = c2 + (h2 << 1) | 0;
+        b[g2 + (r2 + 33 << 1) >> 1] = b[n2 >> 1] | 0;
+        d2 = (N((e[k2 >> 1] | 0) + (e[g2 + (r2 << 1) >> 1] | 0) << 16 >> 16, -21) | 0) + 16384 | 0;
+        q2 = b[g2 + (o2 << 1) >> 1] | 0;
+        j2 = (N((e[l2 >> 1] | 0) + (q2 & 65535) << 16 >> 16, -21) | 0) + 16384 | 0;
+        i2 = (N((e[m2 >> 1] | 0) + (e[g2 + (i2 << 1) >> 1] | 0) << 16 >> 16, -21) | 0) + 16384 | 0;
+        h2 = (N((e[n2 >> 1] | 0) + (e[g2 + (h2 << 1) >> 1] | 0) << 16 >> 16, -21) | 0) + 16384 | 0;
+        p2 = 1;
+        do {
+          B2 = b[1022 + (p2 << 1) >> 1] | 0;
+          D2 = (N(B2, q2 << 16 >> 16) | 0) + d2 | 0;
+          A2 = b[g2 + (o2 + 1 << 1) >> 1] | 0;
+          C2 = (N(B2, A2) | 0) + j2 | 0;
+          z2 = b[1022 + (p2 + 1 << 1) >> 1] | 0;
+          A2 = D2 + (N(z2, A2) | 0) | 0;
+          D2 = b[g2 + (o2 + 2 << 1) >> 1] | 0;
+          C2 = C2 + (N(z2, D2) | 0) | 0;
+          y2 = (N(B2, D2) | 0) + i2 | 0;
+          x2 = b[1022 + (p2 + 2 << 1) >> 1] | 0;
+          D2 = A2 + (N(x2, D2) | 0) | 0;
+          A2 = b[g2 + (o2 + 3 << 1) >> 1] | 0;
+          C2 = C2 + (N(A2, x2) | 0) | 0;
+          B2 = (N(A2, B2) | 0) + h2 | 0;
+          y2 = y2 + (N(A2, z2) | 0) | 0;
+          w2 = b[1022 + (p2 + 3 << 1) >> 1] | 0;
+          d2 = D2 + (N(w2, A2) | 0) | 0;
+          A2 = b[g2 + (o2 + 4 << 1) >> 1] | 0;
+          j2 = C2 + (N(w2, A2) | 0) | 0;
+          z2 = B2 + (N(A2, z2) | 0) | 0;
+          A2 = y2 + (N(A2, x2) | 0) | 0;
+          y2 = b[g2 + (o2 + 5 << 1) >> 1] | 0;
+          i2 = A2 + (N(y2, w2) | 0) | 0;
+          h2 = z2 + (N(y2, x2) | 0) + (N(b[g2 + (o2 + 6 << 1) >> 1] | 0, w2) | 0) | 0;
+          w2 = (p2 << 16) + 262144 | 0;
+          p2 = w2 >> 16;
+          o2 = p2 + r2 | 0;
+          q2 = b[g2 + (o2 << 1) >> 1] | 0;
+        } while ((w2 | 0) < 1900544);
+        B2 = ((b[g2 + (u2 + 30 << 1) >> 1] | 0) * 47 | 0) + j2 | 0;
+        C2 = ((b[g2 + (u2 + 31 << 1) >> 1] | 0) * 47 | 0) + i2 | 0;
+        D2 = ((b[g2 + (u2 + 32 << 1) >> 1] | 0) * 47 | 0) + h2 | 0;
+        b[k2 >> 1] = (((q2 << 16 >> 16) * 47 | 0) + d2 | 0) >>> 15;
+        b[l2 >> 1] = B2 >>> 15;
+        b[m2 >> 1] = C2 >>> 15;
+        b[n2 >> 1] = D2 >>> 15;
+        v2 = v2 + 1 << 16 >> 16;
+        d2 = v2 << 16 >> 16;
+      } while ((t2 | 0) > (d2 | 0));
+      i2 = g2 + (s2 << 1) | 0;
+      h2 = f2;
+      j2 = h2 + 60 | 0;
+      do {
+        a[h2 >> 0] = a[i2 >> 0] | 0;
+        h2 = h2 + 1 | 0;
+        i2 = i2 + 1 | 0;
+      } while ((h2 | 0) < (j2 | 0));
+      return;
+    }
+    function db(a2) {
+      a2 = a2 | 0;
+      var c2 = 0, d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0;
+      e2 = b[a2 + -4 >> 1] | 0;
+      g2 = b[a2 + -2 >> 1] | 0;
+      h2 = b[a2 >> 1] | 0;
+      d2 = b[a2 + 2 >> 1] | 0;
+      c2 = b[a2 + 4 >> 1] | 0;
+      f2 = g2 << 16 >> 16 < e2 << 16 >> 16;
+      a2 = f2 ? g2 : e2;
+      g2 = f2 ? e2 : g2;
+      e2 = h2 << 16 >> 16 < a2 << 16 >> 16;
+      f2 = e2 ? h2 : a2;
+      a2 = e2 ? a2 : h2;
+      h2 = d2 << 16 >> 16 < f2 << 16 >> 16;
+      e2 = h2 ? d2 : f2;
+      d2 = h2 ? f2 : d2;
+      c2 = c2 << 16 >> 16 < e2 << 16 >> 16 ? e2 : c2;
+      e2 = a2 << 16 >> 16 < g2 << 16 >> 16;
+      f2 = e2 ? a2 : g2;
+      a2 = e2 ? g2 : a2;
+      g2 = d2 << 16 >> 16 < f2 << 16 >> 16;
+      e2 = g2 ? d2 : f2;
+      d2 = g2 ? f2 : d2;
+      c2 = c2 << 16 >> 16 < e2 << 16 >> 16 ? e2 : c2;
+      a2 = d2 << 16 >> 16 < a2 << 16 >> 16 ? d2 : a2;
+      return (c2 << 16 >> 16 < a2 << 16 >> 16 ? c2 : a2) | 0;
+    }
+    function eb(e2, f2, g2, h2, i2, j2) {
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      j2 = j2 | 0;
+      var k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0;
+      k2 = b[h2 >> 1] | 0;
+      l2 = c[48 + (k2 << 2) >> 2] | 0;
+      fc(f2 | 0, 0, b[1084 + (k2 << 1) >> 1] << 1 | 0) | 0;
+      k2 = b[h2 >> 1] | 0;
+      m2 = b[1084 + (k2 << 16 >> 16 << 1) >> 1] | 0;
+      n2 = m2 << 16 >> 16 >> 3;
+      if (n2 << 16 >> 16) {
+        q2 = n2 + -1 & 65535;
+        r2 = q2 + 1 | 0;
+        q2 = (q2 << 3) + 8 | 0;
+        p2 = e2;
+        o2 = l2;
+        while (1) {
+          m2 = d[p2 >> 0] | 0;
+          do
+            switch (((m2 & 240) + -16 | 0) >>> 4 & 268435455 | 0) {
+              case 14: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 4 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 13: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 4 | 0;
+                s2 = 18;
+                break;
+              }
+              case 12: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 11: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 2 | 0;
+                s2 = 18;
+                break;
+              }
+              case 10: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 4 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 9: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 4 | 0;
+                s2 = 18;
+                break;
+              }
+              case 8: {
+                b[f2 + (b[o2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 7: {
+                k2 = o2;
+                s2 = 18;
+                break;
+              }
+              case 6: {
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 4 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 5: {
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 4 | 0;
+                s2 = 18;
+                break;
+              }
+              case 4: {
+                b[f2 + (b[o2 + 2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 3: {
+                k2 = o2 + 2 | 0;
+                s2 = 18;
+                break;
+              }
+              case 2: {
+                b[f2 + (b[o2 + 4 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+              case 1: {
+                k2 = o2 + 4 | 0;
+                s2 = 18;
+                break;
+              }
+              case 0: {
+                k2 = o2 + 6 | 0;
+                s2 = 18;
+                break;
+              }
+            }
+          while (0);
+          if ((s2 | 0) == 18) {
+            s2 = 0;
+            b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+          }
+          k2 = o2 + 8 | 0;
+          do
+            switch (((m2 << 4 & 240) + -16 | 0) >>> 4 & 268435455 | 0) {
+              case 14: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 12 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 13: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 12 | 0;
+                s2 = 47;
+                break;
+              }
+              case 12: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 11: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 10 | 0;
+                s2 = 47;
+                break;
+              }
+              case 10: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 12 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 9: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 12 | 0;
+                s2 = 47;
+                break;
+              }
+              case 8: {
+                b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 7: {
+                s2 = 47;
+                break;
+              }
+              case 6: {
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                b[f2 + (b[o2 + 12 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 5: {
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 12 | 0;
+                s2 = 47;
+                break;
+              }
+              case 4: {
+                b[f2 + (b[o2 + 10 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 3: {
+                k2 = o2 + 10 | 0;
+                s2 = 47;
+                break;
+              }
+              case 2: {
+                b[f2 + (b[o2 + 12 >> 1] << 1) >> 1] = 127;
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+              case 1: {
+                k2 = o2 + 12 | 0;
+                s2 = 47;
+                break;
+              }
+              case 0: {
+                k2 = o2 + 14 | 0;
+                s2 = 47;
+                break;
+              }
+            }
+          while (0);
+          if ((s2 | 0) == 47) {
+            s2 = 0;
+            b[f2 + (b[k2 >> 1] << 1) >> 1] = 127;
+          }
+          n2 = n2 + -1 << 16 >> 16;
+          if (!(n2 << 16 >> 16))
+            break;
+          else {
+            p2 = p2 + 1 | 0;
+            o2 = o2 + 16 | 0;
+          }
+        }
+        k2 = b[h2 >> 1] | 0;
+        l2 = l2 + (q2 << 1) | 0;
+        e2 = e2 + r2 | 0;
+        m2 = b[1084 + (k2 << 16 >> 16 << 1) >> 1] | 0;
+      }
+      e2 = a[e2 >> 0] | 0;
+      m2 = ((m2 << 16 >> 16 | 0) % 8 | 0) & 65535;
+      if (m2 << 16 >> 16) {
+        while (1) {
+          k2 = e2 & 255;
+          if (k2 & 128 | 0)
+            b[f2 + (b[l2 >> 1] << 1) >> 1] = 127;
+          e2 = k2 << 1 & 255;
+          m2 = m2 + -1 << 16 >> 16;
+          if (!(m2 << 16 >> 16))
+            break;
+          else
+            l2 = l2 + 2 | 0;
+        }
+        k2 = b[h2 >> 1] | 0;
+      }
+      switch (k2 << 16 >> 16 | 0) {
+        case 8:
+        case 7:
+        case 6:
+        case 5:
+        case 4:
+        case 3:
+        case 2:
+        case 1:
+        case 0: {
+          b[g2 >> 1] = i2 << 24 >> 24 ? 0 : 3;
+          j2 = j2 + 2 | 0;
+          i2 = b[h2 >> 1] | 0;
+          b[j2 >> 1] = i2;
+          return;
+        }
+        case 9: {
+          b[g2 >> 1] = i2 << 24 >> 24 == 0 ? 6 : e2 << 24 >> 24 < 0 ? 5 : 4;
+          j2 = j2 + 2 | 0;
+          i2 = b[j2 >> 1] | 0;
+          b[h2 >> 1] = i2;
+          b[j2 >> 1] = i2;
+          return;
+        }
+        case 14: {
+          b[g2 >> 1] = 2;
+          j2 = j2 + 2 | 0;
+          i2 = b[j2 >> 1] | 0;
+          b[h2 >> 1] = i2;
+          b[j2 >> 1] = i2;
+          return;
+        }
+        case 15: {
+          b[g2 >> 1] = 7;
+          j2 = j2 + 2 | 0;
+          i2 = b[j2 >> 1] | 0;
+          b[h2 >> 1] = i2;
+          b[j2 >> 1] = i2;
+          return;
+        }
+        default: {
+          b[g2 >> 1] = 7;
+          j2 = j2 + 2 | 0;
+          i2 = b[j2 >> 1] | 0;
+          b[h2 >> 1] = i2;
+          b[j2 >> 1] = i2;
+          return;
+        }
+      }
+    }
+    function fb(a2) {
+      a2 = a2 | 0;
+      var c2 = 0;
+      c2 = ((b[a2 >> 1] | 0) * 31821 | 0) + 13849 & 65535;
+      b[a2 >> 1] = c2;
+      return c2 | 0;
+    }
+    function gb(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, c2 = 0;
+      do
+        if ((a2 | 0) <= 268435455)
+          if ((a2 | 0) <= 16777215) {
+            if ((a2 | 0) > 65535) {
+              b2 = (a2 | 0) > 1048575 ? 7 : 11;
+              break;
+            }
+            if ((a2 | 0) > 255) {
+              b2 = (a2 | 0) > 4095 ? 15 : 19;
+              break;
+            } else {
+              b2 = (a2 | 0) > 15 ? 23 : 27;
+              break;
+            }
+          } else
+            b2 = 3;
+        else
+          b2 = 0;
+      while (0);
+      c2 = b2 & 65535;
+      switch (((a2 << c2 & 2013265920) + -134217728 | 0) >>> 27 & 31) {
+        case 0: {
+          c2 = c2 + 3 & 65535;
+          return c2 | 0;
+        }
+        case 1:
+        case 2: {
+          c2 = c2 + 2 & 65535;
+          return c2 | 0;
+        }
+        case 5:
+        case 6:
+        case 3:
+        case 4: {
+          c2 = b2 + 1 << 16 >> 16;
+          return c2 | 0;
+        }
+        default: {
+          c2 = b2;
+          return c2 | 0;
+        }
+      }
+      return 0;
+    }
+    function hb(b2) {
+      b2 = b2 | 0;
+      var c2 = 0;
+      c2 = b2 + 48 | 0;
+      do {
+        a[b2 >> 0] = 0;
+        b2 = b2 + 1 | 0;
+      } while ((b2 | 0) < (c2 | 0));
+      return;
+    }
+    function ib(c2, d2, e2, f2, g2) {
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      var h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0;
+      h2 = g2;
+      i2 = f2;
+      j2 = h2 + 48 | 0;
+      do {
+        a[h2 >> 0] = a[i2 >> 0] | 0;
+        h2 = h2 + 1 | 0;
+        i2 = i2 + 1 | 0;
+      } while ((h2 | 0) < (j2 | 0));
+      m2 = d2 << 16 >> 16;
+      ec(g2 + 48 | 0, c2 | 0, m2 << 1 | 0) | 0;
+      d2 = (m2 >>> 2) + m2 | 0;
+      l2 = g2 + 24 | 0;
+      if ((d2 & 65535) << 16 >> 16 <= 0) {
+        i2 = g2 + (m2 << 1) | 0;
+        h2 = f2;
+        j2 = h2 + 48 | 0;
+        do {
+          a[h2 >> 0] = a[i2 >> 0] | 0;
+          h2 = h2 + 1 | 0;
+          i2 = i2 + 1 | 0;
+        } while ((h2 | 0) < (j2 | 0));
+        return;
+      }
+      k2 = d2 & 65535;
+      j2 = e2;
+      d2 = 1;
+      c2 = 0;
+      while (1) {
+        h2 = d2 + -1 << 16 >> 16;
+        i2 = l2 + (c2 * 6554 >> 13 << 1) | 0;
+        if (!(h2 << 16 >> 16)) {
+          d2 = 5;
+          h2 = b[i2 >> 1] | 0;
+        } else {
+          d2 = h2;
+          h2 = jb(i2, 6914 + ((4 - (h2 << 16 >> 16) | 0) * 48 | 0) | 0, 4) | 0;
+        }
+        b[j2 >> 1] = h2;
+        c2 = c2 + 1 | 0;
+        if ((c2 | 0) == (k2 | 0))
+          break;
+        else
+          j2 = j2 + 2 | 0;
+      }
+      i2 = g2 + (m2 << 1) | 0;
+      h2 = f2;
+      j2 = h2 + 48 | 0;
+      do {
+        a[h2 >> 0] = a[i2 >> 0] | 0;
+        h2 = h2 + 1 | 0;
+        i2 = i2 + 1 | 0;
+      } while ((h2 | 0) < (j2 | 0));
+      return;
+    }
+    function jb(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0;
+      g2 = d2 << 16 >> 16;
+      g2 = a2 + (0 - g2 << 1) + (0 - (g2 << 1) << 1) + 2 | 0;
+      d2 = g2 + 2 | 0;
+      a2 = d2 + 2 | 0;
+      f2 = a2 + 2 | 0;
+      e2 = f2 + 2 | 0;
+      g2 = (N(b[c2 >> 1] | 0, b[g2 >> 1] | 0) | 0) + 8192 | 0;
+      d2 = g2 + (N(b[c2 + 2 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      a2 = d2 + (N(b[c2 + 4 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      f2 = a2 + (N(b[c2 + 6 >> 1] | 0, b[f2 >> 1] | 0) | 0) | 0;
+      a2 = e2 + 2 | 0;
+      d2 = a2 + 2 | 0;
+      g2 = d2 + 2 | 0;
+      h2 = g2 + 2 | 0;
+      e2 = f2 + (N(b[c2 + 8 >> 1] | 0, b[e2 >> 1] | 0) | 0) | 0;
+      a2 = e2 + (N(b[c2 + 10 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      d2 = a2 + (N(b[c2 + 12 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      g2 = d2 + (N(b[c2 + 14 >> 1] | 0, b[g2 >> 1] | 0) | 0) | 0;
+      d2 = h2 + 2 | 0;
+      a2 = d2 + 2 | 0;
+      e2 = a2 + 2 | 0;
+      f2 = e2 + 2 | 0;
+      h2 = g2 + (N(b[c2 + 16 >> 1] | 0, b[h2 >> 1] | 0) | 0) | 0;
+      d2 = h2 + (N(b[c2 + 18 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      a2 = d2 + (N(b[c2 + 20 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      e2 = a2 + (N(b[c2 + 22 >> 1] | 0, b[e2 >> 1] | 0) | 0) | 0;
+      a2 = f2 + 2 | 0;
+      d2 = a2 + 2 | 0;
+      h2 = d2 + 2 | 0;
+      g2 = h2 + 2 | 0;
+      f2 = e2 + (N(b[c2 + 24 >> 1] | 0, b[f2 >> 1] | 0) | 0) | 0;
+      a2 = f2 + (N(b[c2 + 26 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      d2 = a2 + (N(b[c2 + 28 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      h2 = d2 + (N(b[c2 + 30 >> 1] | 0, b[h2 >> 1] | 0) | 0) | 0;
+      d2 = g2 + 2 | 0;
+      a2 = d2 + 2 | 0;
+      f2 = a2 + 2 | 0;
+      e2 = f2 + 2 | 0;
+      g2 = h2 + (N(b[c2 + 32 >> 1] | 0, b[g2 >> 1] | 0) | 0) | 0;
+      d2 = g2 + (N(b[c2 + 34 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      a2 = d2 + (N(b[c2 + 36 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      f2 = a2 + (N(b[c2 + 38 >> 1] | 0, b[f2 >> 1] | 0) | 0) | 0;
+      a2 = e2 + 2 | 0;
+      d2 = a2 + 2 | 0;
+      e2 = f2 + (N(b[c2 + 40 >> 1] | 0, b[e2 >> 1] | 0) | 0) | 0;
+      a2 = e2 + (N(b[c2 + 42 >> 1] | 0, b[a2 >> 1] | 0) | 0) | 0;
+      a2 = a2 + (N(b[c2 + 44 >> 1] | 0, b[d2 >> 1] | 0) | 0) | 0;
+      d2 = a2 + (N(b[c2 + 46 >> 1] | 0, b[d2 + 2 >> 1] | 0) | 0) | 0;
+      c2 = d2 << 2;
+      return ((c2 >> 2 | 0) == (d2 | 0) ? c2 : d2 >> 31 ^ 2147418112) >>> 16 & 65535 | 0;
+    }
+    function kb(a2, c2, d2, e2, f2, g2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      var h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0;
+      r2 = f2 + 4 | 0;
+      fc(g2 | 0, 0, 256) | 0;
+      n2 = c2 << 16 >> 16 < 14746;
+      l2 = f2 + 12 | 0;
+      o2 = b[l2 >> 1] | 0;
+      b[f2 + 14 >> 1] = o2;
+      p2 = f2 + 10 | 0;
+      i2 = b[p2 >> 1] | 0;
+      b[l2 >> 1] = i2;
+      l2 = f2 + 8 | 0;
+      j2 = b[l2 >> 1] | 0;
+      b[p2 >> 1] = j2;
+      p2 = f2 + 6 | 0;
+      k2 = b[p2 >> 1] | 0;
+      b[l2 >> 1] = k2;
+      l2 = b[r2 >> 1] | 0;
+      b[p2 >> 1] = l2;
+      p2 = f2 + 2 | 0;
+      m2 = c2 << 16 >> 16 < 9830;
+      h2 = m2 ? 0 : n2 ? 1 : 2;
+      b[r2 >> 1] = c2;
+      c2 = b[p2 >> 1] | 0;
+      r2 = (a2 << 16 >> 16) - c2 | 0;
+      q2 = r2 >> 31;
+      if ((((r2 >> 15 | 0) == (q2 | 0) ? r2 : q2 ^ 32767) & 65535) << 16 >> 16 > (((c2 << 17 >> 17 | 0) == (c2 | 0) ? c2 << 1 : c2 >>> 15 ^ 32767) & 65535) << 16 >> 16)
+        h2 = h2 + (n2 & 1) << 16 >> 16;
+      else {
+        h2 = ((((((m2 & 1) + (l2 << 16 >> 16 < 9830 & 1) << 16 >> 16) + (k2 << 16 >> 16 < 9830 & 1) << 16 >> 16) + (j2 << 16 >> 16 < 9830 & 1) << 16 >> 16) + (i2 << 16 >> 16 < 9830 & 1) << 16 >> 16) + (o2 << 16 >> 16 < 9830 & 1) & 65535) > 2 ? 0 : h2;
+        h2 = h2 + ((((b[f2 >> 1] | 0) + 1 | 0) < (h2 & 65535 | 0)) << 31 >> 31) << 16 >> 16;
+      }
+      b[p2 >> 1] = a2;
+      b[f2 >> 1] = h2;
+      k2 = (h2 & 65535) + (e2 & 65535) << 16;
+      switch (k2 >> 16 | 0) {
+        case 0: {
+          j2 = 0;
+          do {
+            i2 = d2 + (j2 << 1) | 0;
+            h2 = b[i2 >> 1] | 0;
+            a:
+              do
+                if (h2 << 16 >> 16) {
+                  c2 = 0;
+                  while (1) {
+                    r2 = g2 + (c2 + j2 << 1) | 0;
+                    f2 = b[r2 >> 1] | 0;
+                    f2 = ((sb(h2, b[7106 + (c2 << 1) >> 1] | 0) | 0) << 16 >> 16) + (f2 << 16 >> 16) | 0;
+                    q2 = f2 >> 31;
+                    b[r2 >> 1] = (f2 >> 15 | 0) == (q2 | 0) ? f2 : q2 ^ 32767;
+                    c2 = c2 + 1 | 0;
+                    if ((c2 | 0) == 64)
+                      break a;
+                    h2 = b[i2 >> 1] | 0;
+                  }
+                }
+              while (0);
+            j2 = j2 + 1 | 0;
+          } while ((j2 | 0) != 64);
+          break;
+        }
+        case 1: {
+          j2 = 0;
+          do {
+            i2 = d2 + (j2 << 1) | 0;
+            h2 = b[i2 >> 1] | 0;
+            b:
+              do
+                if (h2 << 16 >> 16) {
+                  c2 = 0;
+                  while (1) {
+                    r2 = g2 + (c2 + j2 << 1) | 0;
+                    f2 = b[r2 >> 1] | 0;
+                    f2 = ((sb(h2, b[7234 + (c2 << 1) >> 1] | 0) | 0) << 16 >> 16) + (f2 << 16 >> 16) | 0;
+                    q2 = f2 >> 31;
+                    b[r2 >> 1] = (f2 >> 15 | 0) == (q2 | 0) ? f2 : q2 ^ 32767;
+                    c2 = c2 + 1 | 0;
+                    if ((c2 | 0) == 64)
+                      break b;
+                    h2 = b[i2 >> 1] | 0;
+                  }
+                }
+              while (0);
+            j2 = j2 + 1 | 0;
+          } while ((j2 | 0) != 64);
+          break;
+        }
+      }
+      if ((k2 | 0) < 131072)
+        h2 = 0;
+      else
+        return;
+      do {
+        q2 = (b[g2 + (h2 + 64 << 1) >> 1] | 0) + (b[g2 + (h2 << 1) >> 1] | 0) | 0;
+        r2 = q2 >> 31;
+        b[d2 + (h2 << 1) >> 1] = (q2 >> 15 | 0) == (r2 | 0) ? q2 : r2 ^ 32767;
+        h2 = h2 + 1 | 0;
+      } while ((h2 | 0) != 64);
+      return;
+    }
+    function lb(a2, c2, d2, f2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      var g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0;
+      if (c2 << 16 >> 16 >= f2 << 16 >> 16)
+        return;
+      h2 = c2 << 16 >> 16;
+      g2 = d2 << 16 >> 16;
+      d2 = f2 << 16 >> 16;
+      c2 = h2;
+      do {
+        f2 = a2 + (c2 << 1) | 0;
+        j2 = e[f2 >> 1] << 16;
+        k2 = N(b[a2 + (c2 - h2 << 1) >> 1] | 0, g2) | 0;
+        k2 = (k2 | 0) == 1073741824 ? 2147483647 : k2 << 1;
+        i2 = k2 + j2 | 0;
+        i2 = (k2 ^ j2 | 0) > -1 & (i2 ^ j2 | 0) < 0 ? j2 >> 31 ^ 2147483647 : i2;
+        b[f2 >> 1] = (i2 | 0) == 2147483647 ? 32767 : (i2 + 32768 | 0) >>> 16 & 65535;
+        c2 = c2 + 1 | 0;
+      } while ((c2 | 0) != (d2 | 0));
+      return;
+    }
+    function mb(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0;
+      c2 = a2 + (0 - (c2 << 16 >> 16) << 1) | 0;
+      m2 = 0 - d2 << 16 >> 16;
+      l2 = m2 << 16 >> 16 < 0;
+      c2 = (l2 ? c2 + -2 | 0 : c2) + -30 | 0;
+      m2 = 3 - ((l2 ? (m2 & 65535) + 4 | 0 : 0 - (d2 & 65535) | 0) << 16 >> 16) | 0;
+      l2 = e2 << 16 >> 16;
+      j2 = l2 >> 2;
+      if ((j2 | 0) > 0) {
+        i2 = 0;
+        d2 = c2;
+        k2 = 0;
+        do {
+          e2 = 8192;
+          f2 = 8192;
+          g2 = 8192;
+          h2 = 8192;
+          c2 = 0;
+          while (1) {
+            r2 = c2 + 1 | 0;
+            p2 = c2 + 2 | 0;
+            u2 = b[7362 + (m2 << 6) + (c2 << 1) >> 1] | 0;
+            v2 = (N(u2, b[d2 + (c2 << 1) >> 1] | 0) | 0) + e2 | 0;
+            o2 = b[d2 + (r2 << 1) >> 1] | 0;
+            t2 = (N(u2, o2) | 0) + f2 | 0;
+            r2 = b[7362 + (m2 << 6) + (r2 << 1) >> 1] | 0;
+            o2 = v2 + (N(r2, o2) | 0) | 0;
+            v2 = b[d2 + (p2 << 1) >> 1] | 0;
+            t2 = t2 + (N(r2, v2) | 0) | 0;
+            q2 = (N(u2, v2) | 0) + h2 | 0;
+            p2 = b[7362 + (m2 << 6) + (p2 << 1) >> 1] | 0;
+            v2 = o2 + (N(p2, v2) | 0) | 0;
+            o2 = c2 + 3 | 0;
+            n2 = c2 + 4 | 0;
+            s2 = b[d2 + (o2 << 1) >> 1] | 0;
+            u2 = (N(s2, u2) | 0) + g2 | 0;
+            q2 = q2 + (N(s2, r2) | 0) | 0;
+            t2 = t2 + (N(s2, p2) | 0) | 0;
+            o2 = b[7362 + (m2 << 6) + (o2 << 1) >> 1] | 0;
+            e2 = v2 + (N(o2, s2) | 0) | 0;
+            s2 = b[d2 + (n2 << 1) >> 1] | 0;
+            r2 = u2 + (N(s2, r2) | 0) | 0;
+            f2 = t2 + (N(o2, s2) | 0) | 0;
+            s2 = q2 + (N(s2, p2) | 0) | 0;
+            q2 = b[d2 + (c2 + 5 << 1) >> 1] | 0;
+            h2 = s2 + (N(q2, o2) | 0) | 0;
+            g2 = r2 + (N(q2, p2) | 0) + (N(b[d2 + (c2 + 6 << 1) >> 1] | 0, o2) | 0) | 0;
+            c2 = n2 << 16;
+            if ((c2 | 0) >= 2097152)
+              break;
+            else
+              c2 = c2 >> 16;
+          }
+          v2 = k2 << 2;
+          b[a2 + (v2 << 1) >> 1] = e2 >>> 14;
+          b[a2 + ((v2 | 1) << 1) >> 1] = f2 >>> 14;
+          b[a2 + ((v2 | 2) << 1) >> 1] = h2 >>> 14;
+          b[a2 + ((v2 | 3) << 1) >> 1] = g2 >>> 14;
+          d2 = d2 + 8 | 0;
+          i2 = i2 + 1 << 16 >> 16;
+          k2 = i2 << 16 >> 16;
+        } while ((j2 | 0) > (k2 | 0));
+        c2 = k2 << 2;
+      } else {
+        d2 = c2;
+        c2 = 0;
+      }
+      if (!(l2 & 1))
+        return;
+      v2 = (N(b[7362 + (m2 << 6) >> 1] | 0, b[d2 >> 1] | 0) | 0) + 8192 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 2 >> 1] | 0, b[d2 + 2 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 4 >> 1] | 0, b[d2 + 4 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 6 >> 1] | 0, b[d2 + 6 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 8 >> 1] | 0, b[d2 + 8 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 10 >> 1] | 0, b[d2 + 10 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 12 >> 1] | 0, b[d2 + 12 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 14 >> 1] | 0, b[d2 + 14 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 16 >> 1] | 0, b[d2 + 16 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 18 >> 1] | 0, b[d2 + 18 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 20 >> 1] | 0, b[d2 + 20 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 22 >> 1] | 0, b[d2 + 22 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 24 >> 1] | 0, b[d2 + 24 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 26 >> 1] | 0, b[d2 + 26 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 28 >> 1] | 0, b[d2 + 28 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 30 >> 1] | 0, b[d2 + 30 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 32 >> 1] | 0, b[d2 + 32 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 34 >> 1] | 0, b[d2 + 34 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 36 >> 1] | 0, b[d2 + 36 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 38 >> 1] | 0, b[d2 + 38 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 40 >> 1] | 0, b[d2 + 40 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 42 >> 1] | 0, b[d2 + 42 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 44 >> 1] | 0, b[d2 + 44 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 46 >> 1] | 0, b[d2 + 46 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 48 >> 1] | 0, b[d2 + 48 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 50 >> 1] | 0, b[d2 + 50 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 52 >> 1] | 0, b[d2 + 52 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 54 >> 1] | 0, b[d2 + 54 >> 1] | 0) | 0) | 0;
+      v2 = (N(b[7362 + (m2 << 6) + 56 >> 1] | 0, b[d2 + 56 >> 1] | 0) | 0) + v2 | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 58 >> 1] | 0, b[d2 + 58 >> 1] | 0) | 0) | 0;
+      v2 = v2 + (N(b[7362 + (m2 << 6) + 60 >> 1] | 0, b[d2 + 60 >> 1] | 0) | 0) | 0;
+      b[a2 + (c2 << 1) >> 1] = (v2 + (N(b[7362 + (m2 << 6) + 62 >> 1] | 0, b[d2 + 62 >> 1] | 0) | 0) | 0) >>> 14;
+      return;
+    }
+    function nb(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      f2 = (d2 & 65535) + 65535 | 0;
+      d2 = f2 & 65535;
+      if (!(d2 << 16 >> 16))
+        return;
+      g2 = c2 << 16 >> 16;
+      c2 = d2;
+      d2 = f2 << 16 >> 16;
+      while (1) {
+        f2 = a2 + (d2 << 1) | 0;
+        h2 = e[f2 >> 1] << 16;
+        i2 = N(b[a2 + (d2 + -1 << 1) >> 1] | 0, g2) | 0;
+        i2 = (i2 | 0) == 1073741824 ? 2147483647 : i2 << 1;
+        d2 = h2 - i2 | 0;
+        d2 = ((d2 ^ h2) & (i2 ^ h2) | 0) < 0 ? h2 >> 31 ^ 2147483647 : d2;
+        b[f2 >> 1] = (d2 | 0) == 2147483647 ? 32767 : (d2 + 32768 | 0) >>> 16 & 65535;
+        d2 = c2 + -1 << 16 >> 16;
+        if (!(d2 << 16 >> 16))
+          break;
+        else {
+          c2 = d2;
+          d2 = d2 << 16 >> 16;
+        }
+      }
+      return;
+    }
+    function ob(a2, b2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      c[d2 >> 2] = b2 + 1520;
+      Ja(b2 + 1150 | 0, 7618) | 0;
+      pb(b2, 1);
+      c[a2 >> 2] = b2;
+      return;
+    }
+    function pb(d2, e2) {
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0;
+      fc(d2 | 0, 0, 496) | 0;
+      g2 = d2 + 656 | 0;
+      c[g2 >> 2] = 0;
+      c[g2 + 4 >> 2] = 0;
+      c[g2 + 8 >> 2] = 0;
+      c[g2 + 12 >> 2] = 0;
+      c[g2 + 16 >> 2] = 0;
+      c[g2 + 20 >> 2] = 0;
+      c[g2 + 24 >> 2] = 0;
+      c[g2 + 28 >> 2] = 0;
+      b[d2 + 1056 >> 1] = 0;
+      b[d2 + 1054 >> 1] = 64;
+      b[d2 + 1148 >> 1] = 1;
+      c[d2 + 700 >> 2] = 0;
+      b[d2 + 688 >> 1] = 0;
+      g2 = d2 + 1116 | 0;
+      c[g2 >> 2] = 0;
+      c[g2 + 4 >> 2] = 0;
+      c[g2 + 8 >> 2] = 0;
+      c[g2 + 12 >> 2] = 0;
+      b[d2 + 690 >> 1] = 8;
+      b[d2 + 698 >> 1] = 8;
+      b[d2 + 696 >> 1] = 8;
+      b[d2 + 694 >> 1] = 8;
+      b[d2 + 692 >> 1] = 8;
+      if (!(e2 << 16 >> 16))
+        return;
+      Ga(d2 + 1068 | 0);
+      hb(d2 + 782 | 0);
+      wa(d2 + 870 | 0);
+      bb(d2 + 990 | 0);
+      Sa(d2 + 770 | 0);
+      Qa(d2 + 1132 | 0);
+      $a(d2 + 1058 | 0);
+      f2 = d2 + 496 | 0;
+      e2 = 7650;
+      g2 = f2 + 32 | 0;
+      do {
+        a[f2 >> 0] = a[e2 >> 0] | 0;
+        f2 = f2 + 1 | 0;
+        e2 = e2 + 1 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      f2 = d2 + 528 | 0;
+      e2 = 7618;
+      g2 = f2 + 32 | 0;
+      do {
+        a[f2 >> 0] = a[e2 >> 0] | 0;
+        f2 = f2 + 1 | 0;
+        e2 = e2 + 1 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      f2 = d2 + 560 | 0;
+      e2 = 7618;
+      g2 = f2 + 32 | 0;
+      do {
+        a[f2 >> 0] = a[e2 >> 0] | 0;
+        f2 = f2 + 1 | 0;
+        e2 = e2 + 1 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      f2 = d2 + 592 | 0;
+      e2 = 7618;
+      g2 = f2 + 32 | 0;
+      do {
+        a[f2 >> 0] = a[e2 >> 0] | 0;
+        f2 = f2 + 1 | 0;
+        e2 = e2 + 1 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      f2 = d2 + 624 | 0;
+      e2 = 7618;
+      g2 = f2 + 32 | 0;
+      do {
+        a[f2 >> 0] = a[e2 >> 0] | 0;
+        f2 = f2 + 1 | 0;
+        e2 = e2 + 1 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      b[d2 + 768 >> 1] = 0;
+      b[d2 + 1050 >> 1] = 21845;
+      b[d2 + 1052 >> 1] = 21845;
+      b[d2 + 1114 >> 1] = 21845;
+      b[d2 + 1146 >> 1] = 0;
+      b[d2 + 1144 >> 1] = 0;
+      f2 = d2 + 830 | 0;
+      g2 = f2 + 40 | 0;
+      do {
+        b[f2 >> 1] = 0;
+        f2 = f2 + 2 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      e2 = d2 + 1150 | 0;
+      f2 = d2 + 704 | 0;
+      g2 = f2 + 64 | 0;
+      do {
+        c[f2 >> 2] = 0;
+        f2 = f2 + 4 | 0;
+      } while ((f2 | 0) < (g2 | 0));
+      Ja(e2, 7618) | 0;
+      b[d2 + 1518 >> 1] = 0;
+      return;
+    }
+    function qb() {
+      return 4392;
+    }
+    function rb(d2, f2, g2, h2, i2, j2, k2) {
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      j2 = j2 | 0;
+      k2 = k2 | 0;
+      var n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0, F2 = 0, G2 = 0, H2 = 0, I2 = 0, J2 = 0, K2 = 0, L2 = 0, M2 = 0, O2 = 0, P2 = 0, Q2 = 0, R2 = 0, S2 = 0, T2 = 0, U2 = 0, V2 = 0, X2 = 0, Y2 = 0, Z2 = 0, _2 = 0, $2 = 0, aa2 = 0, ba2 = 0, ca2 = 0, da2 = 0, ea2 = 0, fa2 = 0, ga2 = 0, ha2 = 0, ia2 = 0, ja2 = 0, ka2 = 0, la2 = 0, ma2 = 0, na2 = 0, oa2 = 0, pa2 = 0, qa2 = 0, ra2 = 0, sa2 = 0, ta2 = 0, ua2 = 0, wa2 = 0, xa2 = 0, Aa2 = 0, Ba2 = 0, Ca2 = 0, Da2 = 0, Ea2 = 0, Fa2 = 0, Ga2 = 0, Ia2 = 0, Ja2 = 0, La2 = 0, Qa2 = 0, Ra2 = 0, Sa2 = 0, Ta2 = 0, Ua2 = 0, Va2 = 0, Wa2 = 0, Ya2 = 0, $a2 = 0, bb2 = 0, cb2 = 0, db2 = 0;
+      db2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      Ta2 = db2;
+      Ua2 = db2 + 4 | 0;
+      Va2 = db2 + 16 | 0;
+      Ra2 = db2 + 10 | 0;
+      Sa2 = db2 + 8 | 0;
+      c[Ta2 >> 2] = f2;
+      o2 = k2 + 692 | 0;
+      v2 = k2 + 1702 | 0;
+      r2 = k2 + 1838 | 0;
+      Ya2 = k2 + 1870 | 0;
+      $a2 = k2 + 1902 | 0;
+      Ia2 = k2 + 1934 | 0;
+      Ja2 = k2 + 2062 | 0;
+      Wa2 = k2 + 2190 | 0;
+      bb2 = k2 + 2702 | 0;
+      s2 = d2 << 16 >> 16;
+      cb2 = b[7682 + (s2 << 1) >> 1] | 0;
+      b[h2 >> 1] = 320;
+      Ga2 = i2 + 1150 | 0;
+      q2 = Na(Ga2, j2) | 0;
+      n2 = q2 << 16 >> 16 != 0;
+      if (n2)
+        Ka(Ga2, Wa2, q2, Ya2, Ta2) | 0;
+      switch (j2 << 16 >> 16) {
+        case 1:
+        case 3: {
+          f2 = 0;
+          t2 = 5;
+          break;
+        }
+        case 2:
+        case 7: {
+          f2 = 1;
+          t2 = 5;
+          break;
+        }
+        default: {
+          Fa2 = i2 + 1146 | 0;
+          f2 = 0;
+          Qa2 = 0;
+          h2 = b[Fa2 >> 1] >> 1;
+          Ea2 = 0;
+        }
+      }
+      if ((t2 | 0) == 5) {
+        Fa2 = i2 + 1146 | 0;
+        Ea2 = (b[Fa2 >> 1] | 0) + 1 | 0;
+        h2 = Ea2 & 65535;
+        b[Fa2 >> 1] = h2;
+        Qa2 = 1;
+        h2 = (Ea2 << 16 | 0) > 393216 ? 6 : h2;
+        Ea2 = 1;
+      }
+      b[Fa2 >> 1] = h2;
+      La2 = i2 + 1510 | 0;
+      switch (b[La2 >> 1] | 0) {
+        case 1: {
+          h2 = 0;
+          t2 = 9;
+          break;
+        }
+        case 2: {
+          h2 = 1;
+          t2 = 9;
+          break;
+        }
+      }
+      if ((t2 | 0) == 9) {
+        b[Fa2 >> 1] = 5;
+        b[i2 + 1144 >> 1] = h2;
+      }
+      do
+        if (q2 << 16 >> 16 == 0 ? (p2 = Pa(Ta2) | 0, Qa2 << 16 >> 16 == 0) : 0) {
+          h2 = i2 + 1518 | 0;
+          if (!(p2 << 16 >> 16)) {
+            Ca2 = (b[h2 >> 1] | 0) + 1 | 0;
+            Da2 = Ca2 >> 31;
+            b[h2 >> 1] = (Ca2 >> 15 | 0) == (Da2 | 0) ? Ca2 : Da2 ^ 32767;
+            break;
+          } else {
+            b[h2 >> 1] = 0;
+            break;
+          }
+        }
+      while (0);
+      if (n2) {
+        _a(Ya2, r2, 16);
+        Za(r2, v2, 16, 1);
+        h2 = i2 + 528 | 0;
+        u2 = $a2;
+        j2 = h2;
+        t2 = u2 + 32 | 0;
+        do {
+          a[u2 >> 0] = a[j2 >> 0] | 0;
+          u2 = u2 + 1 | 0;
+          j2 = j2 + 1 | 0;
+        } while ((u2 | 0) < (t2 | 0));
+        f2 = 0;
+        do {
+          Ua2 = b[$a2 + (f2 << 1) >> 1] | 0;
+          Ua2 = (Ua2 * 18021 | 0) == 1073741824 ? 2147483647 : Ua2 * 36042 | 0;
+          Ta2 = b[Ya2 + (f2 << 1) >> 1] | 0;
+          Ta2 = (Ta2 * 14746 | 0) == 1073741824 ? 2147483647 : Ta2 * 29492 | 0;
+          Va2 = Ua2 + Ta2 | 0;
+          Va2 = (Ua2 ^ Ta2 | 0) > -1 & (Va2 ^ Ua2 | 0) < 0 ? Ua2 >> 31 ^ 2147483647 : Va2;
+          b[bb2 + (f2 << 1) >> 1] = (Va2 | 0) == 2147483647 ? 32767 : (Va2 + 32768 | 0) >>> 16 & 65535;
+          f2 = f2 + 1 | 0;
+        } while ((f2 | 0) != 16);
+        Hb(v2, Wa2, 0, g2, 1, bb2, cb2, q2, i2, Qa2, k2);
+        f2 = 0;
+        do {
+          Va2 = b[$a2 + (f2 << 1) >> 1] | 0;
+          Va2 = (Va2 * 6553 | 0) == 1073741824 ? 2147483647 : Va2 * 13106 | 0;
+          Ua2 = b[Ya2 + (f2 << 1) >> 1] | 0;
+          Ua2 = (Ua2 * 26214 | 0) == 1073741824 ? 2147483647 : Ua2 * 52428 | 0;
+          Wa2 = Va2 + Ua2 | 0;
+          Wa2 = (Va2 ^ Ua2 | 0) > -1 & (Wa2 ^ Va2 | 0) < 0 ? Va2 >> 31 ^ 2147483647 : Wa2;
+          b[bb2 + (f2 << 1) >> 1] = (Wa2 | 0) == 2147483647 ? 32767 : (Wa2 + 32768 | 0) >>> 16 & 65535;
+          f2 = f2 + 1 | 0;
+        } while ((f2 | 0) != 16);
+        Hb(v2, k2 + 2318 | 0, 0, g2 + 160 | 0, 1, bb2, cb2, q2, i2, Qa2, k2);
+        f2 = 0;
+        do {
+          Va2 = b[$a2 + (f2 << 1) >> 1] | 0;
+          Va2 = (Va2 * 1310 | 0) == 1073741824 ? 2147483647 : Va2 * 2620 | 0;
+          Ua2 = b[Ya2 + (f2 << 1) >> 1] | 0;
+          Ua2 = (Ua2 * 31457 | 0) == 1073741824 ? 2147483647 : Ua2 * 62914 | 0;
+          Wa2 = Va2 + Ua2 | 0;
+          Wa2 = (Va2 ^ Ua2 | 0) > -1 & (Wa2 ^ Va2 | 0) < 0 ? Va2 >> 31 ^ 2147483647 : Wa2;
+          b[bb2 + (f2 << 1) >> 1] = (Wa2 | 0) == 2147483647 ? 32767 : (Wa2 + 32768 | 0) >>> 16 & 65535;
+          f2 = f2 + 1 | 0;
+        } while ((f2 | 0) != 16);
+        Hb(v2, k2 + 2446 | 0, 0, g2 + 320 | 0, 1, bb2, cb2, q2, i2, Qa2, k2);
+        u2 = b[Ya2 >> 1] | 0;
+        b[bb2 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1872 >> 1] | 0;
+        b[k2 + 2704 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1874 >> 1] | 0;
+        b[k2 + 2706 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1876 >> 1] | 0;
+        b[k2 + 2708 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1878 >> 1] | 0;
+        b[k2 + 2710 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1880 >> 1] | 0;
+        b[k2 + 2712 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1882 >> 1] | 0;
+        b[k2 + 2714 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1884 >> 1] | 0;
+        b[k2 + 2716 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1886 >> 1] | 0;
+        b[k2 + 2718 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1888 >> 1] | 0;
+        b[k2 + 2720 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1890 >> 1] | 0;
+        b[k2 + 2722 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1892 >> 1] | 0;
+        b[k2 + 2724 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1894 >> 1] | 0;
+        b[k2 + 2726 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1896 >> 1] | 0;
+        b[k2 + 2728 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1898 >> 1] | 0;
+        b[k2 + 2730 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        u2 = b[k2 + 1900 >> 1] | 0;
+        b[k2 + 2732 >> 1] = (u2 * 32767 | 0) == 1073741824 ? 32767 : ((u2 * 65534 | 0) + 32768 | 0) >>> 16 & 65535;
+        Hb(v2, k2 + 2574 | 0, 0, g2 + 480 | 0, 1, bb2, cb2, q2, i2, Qa2, k2);
+        fc(i2 | 0, 0, 496) | 0;
+        u2 = i2 + 656 | 0;
+        c[u2 >> 2] = 0;
+        c[u2 + 4 >> 2] = 0;
+        c[u2 + 8 >> 2] = 0;
+        c[u2 + 12 >> 2] = 0;
+        c[u2 + 16 >> 2] = 0;
+        c[u2 + 20 >> 2] = 0;
+        c[u2 + 24 >> 2] = 0;
+        c[u2 + 28 >> 2] = 0;
+        b[i2 + 1056 >> 1] = 0;
+        b[i2 + 1054 >> 1] = 64;
+        b[i2 + 1148 >> 1] = 1;
+        c[i2 + 700 >> 2] = 0;
+        b[i2 + 688 >> 1] = 0;
+        u2 = i2 + 1116 | 0;
+        c[u2 >> 2] = 0;
+        c[u2 + 4 >> 2] = 0;
+        c[u2 + 8 >> 2] = 0;
+        c[u2 + 12 >> 2] = 0;
+        b[i2 + 690 >> 1] = 8;
+        b[i2 + 698 >> 1] = 8;
+        b[i2 + 696 >> 1] = 8;
+        b[i2 + 694 >> 1] = 8;
+        b[i2 + 692 >> 1] = 8;
+        u2 = h2;
+        j2 = Ya2;
+        t2 = u2 + 32 | 0;
+        do {
+          a[u2 >> 0] = a[j2 >> 0] | 0;
+          u2 = u2 + 1 | 0;
+          j2 = j2 + 1 | 0;
+        } while ((u2 | 0) < (t2 | 0));
+        b[i2 + 1144 >> 1] = Qa2;
+        b[La2 >> 1] = q2;
+        l = db2;
+        return 0;
+      }
+      ec(o2 | 0, i2 | 0, 496) | 0;
+      Ca2 = k2 + 1188 | 0;
+      b[Va2 >> 1] = Oa(8, Ta2) | 0;
+      Da2 = Va2 + 2 | 0;
+      b[Da2 >> 1] = Oa(8, Ta2) | 0;
+      switch (d2 << 16 >> 16) {
+        case 0:
+        case 9: {
+          Ba2 = Oa(14, Ta2) | 0;
+          b[Va2 + 6 >> 1] = Ba2 & 127;
+          b[Va2 + 4 >> 1] = Ba2 << 16 >> 16 >> 7;
+          b[Va2 + 8 >> 1] = Oa(6, Ta2) | 0;
+          Fb(Va2, Ya2, i2 + 656 | 0, i2 + 528 | 0, i2 + 560 | 0, Qa2, 1);
+          break;
+        }
+        default: {
+          b[Va2 + 4 >> 1] = Oa(6, Ta2) | 0;
+          b[Va2 + 6 >> 1] = Oa(7, Ta2) | 0;
+          b[Va2 + 8 >> 1] = Oa(7, Ta2) | 0;
+          b[Va2 + 10 >> 1] = Oa(5, Ta2) | 0;
+          b[Va2 + 12 >> 1] = Oa(5, Ta2) | 0;
+          Db(Va2, Ya2, i2 + 656 | 0, i2 + 528 | 0, i2 + 560 | 0, Qa2, 1);
+        }
+      }
+      _a(Ya2, r2, 16);
+      h2 = i2 + 1148 | 0;
+      if (!(b[h2 >> 1] | 0)) {
+        j2 = r2;
+        h2 = i2 + 496 | 0;
+      } else {
+        b[h2 >> 1] = 0;
+        h2 = i2 + 496 | 0;
+        u2 = h2;
+        j2 = r2;
+        t2 = u2 + 32 | 0;
+        do {
+          a[u2 >> 0] = a[j2 >> 0] | 0;
+          u2 = u2 + 1 | 0;
+          j2 = j2 + 1 | 0;
+        } while ((u2 | 0) < (t2 | 0));
+        j2 = r2;
+      }
+      Xa(h2, r2, 7702, v2);
+      u2 = h2;
+      t2 = u2 + 32 | 0;
+      do {
+        a[u2 >> 0] = a[j2 >> 0] | 0;
+        u2 = u2 + 1 | 0;
+        j2 = j2 + 1 | 0;
+      } while ((u2 | 0) < (t2 | 0));
+      n2 = i2 + 528 | 0;
+      h2 = 0;
+      j2 = 0;
+      do {
+        Ba2 = (b[Ya2 + (j2 << 1) >> 1] | 0) - (b[n2 + (j2 << 1) >> 1] | 0) | 0;
+        Aa2 = Ba2 >> 31;
+        Aa2 = ((Ba2 >> 15 | 0) == (Aa2 | 0) ? Ba2 : Aa2 ^ 32767) << 16 >> 16;
+        Aa2 = N(Aa2, Aa2) | 0;
+        Aa2 = (Aa2 | 0) == 1073741824 ? 2147483647 : Aa2 << 1;
+        Ba2 = Aa2 + h2 | 0;
+        h2 = (Aa2 ^ h2 | 0) > -1 & (Ba2 ^ h2 | 0) < 0 ? h2 >> 31 ^ 2147483647 : Ba2;
+        j2 = j2 + 1 | 0;
+      } while ((j2 | 0) != 15);
+      o2 = h2 << 8;
+      h2 = (((o2 >> 8 | 0) == (h2 | 0) ? o2 : h2 >> 31 ^ 2147418112) >> 16) * 26214 | 0;
+      o2 = h2 >> 31;
+      o2 = 20480 - ((h2 >> 30 | 0) == (o2 | 0) ? h2 >>> 15 : o2 ^ 32767) | 0;
+      h2 = o2 << 16;
+      h2 = (o2 << 17 >> 17 | 0) == (h2 >> 16 | 0) ? o2 << 1 : h2 >> 31 ^ 32767;
+      o2 = (h2 & 65535) << 16 >> 16 > 0;
+      u2 = $a2;
+      j2 = n2;
+      t2 = u2 + 32 | 0;
+      do {
+        a[u2 >> 0] = a[j2 >> 0] | 0;
+        u2 = u2 + 1 | 0;
+        j2 = j2 + 1 | 0;
+      } while ((u2 | 0) < (t2 | 0));
+      u2 = n2;
+      j2 = Ya2;
+      t2 = u2 + 32 | 0;
+      do {
+        a[u2 >> 0] = a[j2 >> 0] | 0;
+        u2 = u2 + 1 | 0;
+        j2 = j2 + 1 | 0;
+      } while ((u2 | 0) < (t2 | 0));
+      na2 = (s2 + -2 | 0) >>> 0 > 6;
+      oa2 = i2 + 1102 | 0;
+      pa2 = i2 + 1058 | 0;
+      qa2 = i2 + 1054 | 0;
+      ra2 = i2 + 1114 | 0;
+      sa2 = f2 << 16 >> 16 == 0;
+      ma2 = sa2 ^ 1;
+      la2 = ma2 & 1;
+      ta2 = (s2 + -3 | 0) >>> 0 > 5;
+      ua2 = (s2 + -4 | 0) >>> 0 > 4;
+      wa2 = Va2 + 4 | 0;
+      xa2 = Va2 + 6 | 0;
+      Aa2 = (s2 + -5 | 0) >>> 0 > 3;
+      Ba2 = (s2 + -6 | 0) >>> 0 > 2;
+      X2 = (s2 + -7 | 0) >>> 0 > 1;
+      Y2 = Va2 + 8 | 0;
+      Z2 = Va2 + 10 | 0;
+      _2 = Va2 + 12 | 0;
+      $2 = Va2 + 14 | 0;
+      aa2 = i2 + 688 | 0;
+      ba2 = i2 + 1144 | 0;
+      ca2 = i2 + 1518 | 0;
+      da2 = i2 + 1068 | 0;
+      ea2 = i2 + 692 | 0;
+      fa2 = i2 + 690 | 0;
+      ga2 = Qa2 << 16 >> 16 == 0;
+      ha2 = i2 + 696 | 0;
+      ia2 = i2 + 698 | 0;
+      ja2 = i2 + 694 | 0;
+      ka2 = i2 + 1116 | 0;
+      E2 = o2 ? h2 & 65535 : 0;
+      F2 = i2 + 700 | 0;
+      G2 = k2 + 1936 | 0;
+      H2 = k2 + 2060 | 0;
+      I2 = k2 + 2058 | 0;
+      J2 = k2 + 2316 | 0;
+      K2 = i2 + 830 | 0;
+      L2 = d2 << 16 >> 16 == 8;
+      M2 = i2 + 1056 | 0;
+      O2 = i2 + 1050 | 0;
+      P2 = i2 + 694 | 0;
+      Q2 = i2 + 696 | 0;
+      R2 = i2 + 698 | 0;
+      S2 = i2 + 1064 | 0;
+      T2 = i2 + 1066 | 0;
+      U2 = i2 + 1062 | 0;
+      V2 = i2 + 1060 | 0;
+      D2 = v2;
+      h2 = 0;
+      B2 = 0;
+      C2 = 0;
+      while (1) {
+        a:
+          do
+            switch (B2 << 16 >> 16) {
+              case 128:
+                switch (d2 << 16 >> 16) {
+                  case 0:
+                  case 9:
+                    if (na2) {
+                      t2 = 43;
+                      break a;
+                    } else {
+                      t2 = 44;
+                      break a;
+                    }
+                  default:
+                    if (na2) {
+                      t2 = 33;
+                      break a;
+                    } else {
+                      t2 = 36;
+                      break a;
+                    }
+                }
+              case 0: {
+                if (na2)
+                  t2 = 33;
+                else
+                  t2 = 36;
+                break;
+              }
+              default:
+                if (na2)
+                  t2 = 43;
+                else
+                  t2 = 44;
+            }
+          while (0);
+        do
+          if ((t2 | 0) == 33) {
+            A2 = Oa(8, Ta2) | 0;
+            h2 = A2 << 16 >> 16;
+            if (A2 << 16 >> 16 < 116) {
+              n2 = (h2 >>> 1) + 34 | 0;
+              j2 = n2 & 65535;
+              b[Ra2 >> 1] = j2;
+              n2 = (n2 << 16 >> 16) + -34 | 0;
+              t2 = n2 >> 31;
+              t2 = (n2 >> 15 | 0) == (t2 | 0) ? n2 : t2 ^ 32767;
+              n2 = t2 << 16;
+              h2 = h2 - (((t2 << 17 >> 17 | 0) == (n2 >> 16 | 0) ? t2 << 1 : n2 >> 31 ^ 32767) << 16 >> 16) | 0;
+              n2 = h2 >> 31;
+              n2 = (h2 >> 15 | 0) == (n2 | 0) ? h2 : n2 ^ 32767;
+              h2 = n2 << 16;
+              h2 = ((n2 << 17 >> 17 | 0) == (h2 >> 16 | 0) ? n2 << 1 : h2 >> 31 ^ 32767) & 65535;
+              n2 = 1;
+              t2 = 41;
+              break;
+            } else {
+              h2 = h2 + -24 | 0;
+              j2 = h2 >> 31;
+              j2 = ((h2 >> 15 | 0) == (j2 | 0) ? h2 : j2 ^ 32767) & 65535;
+              b[Ra2 >> 1] = j2;
+              h2 = 0;
+              n2 = 1;
+              t2 = 41;
+              break;
+            }
+          } else if ((t2 | 0) == 36) {
+            h2 = Oa(9, Ta2) | 0;
+            j2 = h2 << 16 >> 16;
+            if (h2 << 16 >> 16 < 376) {
+              n2 = (j2 >>> 2) + 34 | 0;
+              t2 = n2 & 65535;
+              b[Ra2 >> 1] = t2;
+              n2 = (n2 << 16 >> 16) + -34 | 0;
+              h2 = n2 >> 31;
+              h2 = (n2 >> 15 | 0) == (h2 | 0) ? n2 : h2 ^ 32767;
+              n2 = h2 << 16;
+              n2 = j2 - (((h2 << 18 >> 18 | 0) == (n2 >> 16 | 0) ? h2 << 2 : n2 >> 31 ^ 32767) << 16 >> 16) | 0;
+              h2 = n2 >> 31;
+              h2 = ((n2 >> 15 | 0) == (h2 | 0) ? n2 : h2 ^ 32767) & 65535;
+              n2 = 0;
+              j2 = t2;
+              t2 = 41;
+              break;
+            }
+            if (h2 << 16 >> 16 < 440) {
+              n2 = (j2 << 16) + -24641536 | 0;
+              h2 = n2 >> 17;
+              j2 = h2 + 128 & 65535;
+              b[Ra2 >> 1] = j2;
+              h2 = (n2 >> 16) - (h2 << 1) | 0;
+              n2 = h2 >> 31;
+              n2 = (h2 >> 15 | 0) == (n2 | 0) ? h2 : n2 ^ 32767;
+              h2 = n2 << 16;
+              h2 = ((n2 << 17 >> 17 | 0) == (h2 >> 16 | 0) ? n2 << 1 : h2 >> 31 ^ 32767) & 65535;
+              n2 = 0;
+              t2 = 41;
+              break;
+            } else {
+              h2 = j2 + -280 | 0;
+              j2 = h2 >> 31;
+              j2 = ((h2 >> 15 | 0) == (j2 | 0) ? h2 : j2 ^ 32767) & 65535;
+              b[Ra2 >> 1] = j2;
+              h2 = 0;
+              n2 = 0;
+              t2 = 41;
+              break;
+            }
+          } else if ((t2 | 0) == 43) {
+            t2 = 0;
+            z2 = (Oa(5, Ta2) | 0) << 16 >> 16;
+            A2 = z2 >>> 1;
+            j2 = A2 + (h2 & 65535) & 65535;
+            b[Ra2 >> 1] = j2;
+            n2 = A2 << 16;
+            n2 = z2 - (((A2 << 17 >> 17 | 0) == (n2 >> 16 | 0) ? z2 & 65534 : n2 >> 31 ^ 32767) << 16 >> 16) | 0;
+            z2 = n2 >> 31;
+            z2 = (n2 >> 15 | 0) == (z2 | 0) ? n2 : z2 ^ 32767;
+            n2 = z2 << 16;
+            A2 = h2;
+            h2 = ((z2 << 17 >> 17 | 0) == (n2 >> 16 | 0) ? z2 << 1 : n2 >> 31 ^ 32767) & 65535;
+            n2 = 1;
+          } else if ((t2 | 0) == 44) {
+            t2 = 0;
+            n2 = (Oa(6, Ta2) | 0) << 16 >> 16;
+            A2 = n2 >>> 2;
+            j2 = A2 + (h2 & 65535) & 65535;
+            b[Ra2 >> 1] = j2;
+            z2 = A2 << 16;
+            z2 = n2 - (((A2 << 18 >> 18 | 0) == (z2 >> 16 | 0) ? n2 & 65532 : z2 >> 31 ^ 32767) << 16 >> 16) | 0;
+            n2 = z2 >> 31;
+            A2 = h2;
+            h2 = ((z2 >> 15 | 0) == (n2 | 0) ? z2 : n2 ^ 32767) & 65535;
+            n2 = 0;
+          }
+        while (0);
+        if ((t2 | 0) == 41) {
+          A2 = (j2 & 65535) + 65528 | 0;
+          A2 = (A2 << 16 | 0) < 2228224 ? 34 : A2 & 65535;
+          A2 = (((A2 & 65535) << 16) + 983040 | 0) > 15138816 ? 216 : A2;
+        }
+        if (Ea2) {
+          ab(oa2, pa2, Ra2, qa2, ra2, f2);
+          p2 = 0;
+          h2 = b[Ra2 >> 1] | 0;
+        } else {
+          p2 = h2;
+          h2 = j2;
+        }
+        x2 = Ca2 + (C2 << 1) | 0;
+        mb(x2, h2, p2, 65);
+        if (n2 | ma2)
+          h2 = la2;
+        else
+          h2 = Pa(Ta2) | 0;
+        if (!(h2 << 16 >> 16)) {
+          h2 = C2 + -1 | 0;
+          j2 = C2 + 1 | 0;
+          o2 = 0;
+          do {
+            b[Ia2 + (o2 << 1) >> 1] = (((((b[Ca2 + (j2 + o2 << 1) >> 1] | 0) + (b[Ca2 + (h2 + o2 << 1) >> 1] | 0) | 0) * 5898 | 0) + ((b[Ca2 + (o2 + C2 << 1) >> 1] | 0) * 20972 | 0) << 1) + 32768 | 0) >>> 16;
+            o2 = o2 + 1 | 0;
+          } while ((o2 | 0) != 64);
+          u2 = x2;
+          j2 = Ia2;
+          t2 = u2 + 128 | 0;
+          do {
+            a[u2 >> 0] = a[j2 >> 0] | 0;
+            u2 = u2 + 1 | 0;
+            j2 = j2 + 1 | 0;
+          } while ((u2 | 0) < (t2 | 0));
+        }
+        b:
+          do
+            if (sa2) {
+              switch (d2 << 16 >> 16) {
+                case 0:
+                case 9: {
+                  z2 = Oa(12, Ta2) | 0;
+                  b[Va2 >> 1] = z2;
+                  ya(z2, Ia2);
+                  break b;
+                }
+              }
+              if (n2) {
+                b[Va2 >> 1] = Oa(5, Ta2) | 0;
+                b[Da2 >> 1] = Oa(5, Ta2) | 0;
+                b[wa2 >> 1] = Oa(5, Ta2) | 0;
+                b[xa2 >> 1] = Oa(5, Ta2) | 0;
+                za(Va2, 20, Ia2);
+                break;
+              }
+              if (ta2) {
+                b[Va2 >> 1] = Oa(9, Ta2) | 0;
+                b[Da2 >> 1] = Oa(9, Ta2) | 0;
+                b[wa2 >> 1] = Oa(9, Ta2) | 0;
+                b[xa2 >> 1] = Oa(9, Ta2) | 0;
+                za(Va2, 36, Ia2);
+                break;
+              }
+              if (ua2) {
+                b[Va2 >> 1] = Oa(13, Ta2) | 0;
+                b[Da2 >> 1] = Oa(13, Ta2) | 0;
+                b[wa2 >> 1] = Oa(9, Ta2) | 0;
+                b[xa2 >> 1] = Oa(9, Ta2) | 0;
+                za(Va2, 44, Ia2);
+                break;
+              }
+              if (Aa2) {
+                b[Va2 >> 1] = Oa(13, Ta2) | 0;
+                b[Da2 >> 1] = Oa(13, Ta2) | 0;
+                b[wa2 >> 1] = Oa(13, Ta2) | 0;
+                b[xa2 >> 1] = Oa(13, Ta2) | 0;
+                za(Va2, 52, Ia2);
+                break;
+              }
+              if (Ba2) {
+                b[Va2 >> 1] = Oa(2, Ta2) | 0;
+                b[Da2 >> 1] = Oa(2, Ta2) | 0;
+                b[wa2 >> 1] = Oa(2, Ta2) | 0;
+                b[xa2 >> 1] = Oa(2, Ta2) | 0;
+                b[Y2 >> 1] = Oa(14, Ta2) | 0;
+                b[Z2 >> 1] = Oa(14, Ta2) | 0;
+                b[_2 >> 1] = Oa(14, Ta2) | 0;
+                b[$2 >> 1] = Oa(14, Ta2) | 0;
+                za(Va2, 64, Ia2);
+                break;
+              }
+              if (X2) {
+                b[Va2 >> 1] = Oa(10, Ta2) | 0;
+                b[Da2 >> 1] = Oa(10, Ta2) | 0;
+                b[wa2 >> 1] = Oa(2, Ta2) | 0;
+                b[xa2 >> 1] = Oa(2, Ta2) | 0;
+                b[Y2 >> 1] = Oa(10, Ta2) | 0;
+                b[Z2 >> 1] = Oa(10, Ta2) | 0;
+                b[_2 >> 1] = Oa(14, Ta2) | 0;
+                b[$2 >> 1] = Oa(14, Ta2) | 0;
+                za(Va2, 72, Ia2);
+                break;
+              } else {
+                b[Va2 >> 1] = Oa(11, Ta2) | 0;
+                b[Da2 >> 1] = Oa(11, Ta2) | 0;
+                b[wa2 >> 1] = Oa(11, Ta2) | 0;
+                b[xa2 >> 1] = Oa(11, Ta2) | 0;
+                b[Y2 >> 1] = Oa(11, Ta2) | 0;
+                b[Z2 >> 1] = Oa(11, Ta2) | 0;
+                b[_2 >> 1] = Oa(11, Ta2) | 0;
+                b[$2 >> 1] = Oa(11, Ta2) | 0;
+                za(Va2, 88, Ia2);
+                break;
+              }
+            } else {
+              h2 = 0;
+              do {
+                b[Ia2 + (h2 << 1) >> 1] = (fb(O2) | 0) << 16 >> 16 >> 3;
+                h2 = h2 + 1 | 0;
+              } while ((h2 | 0) != 64);
+            }
+          while (0);
+        nb(Ia2, b[aa2 >> 1] | 0, 64);
+        lb(Ia2, (b[Ra2 >> 1] | 0) + (p2 << 16 >> 16 > 2 & 1) << 16 >> 16, 27853, 64);
+        if (n2) {
+          z2 = Oa(6, Ta2) | 0;
+          Ha(z2, 6, Ia2, 64, Sa2, Ua2, Qa2, b[ba2 >> 1] | 0, b[Fa2 >> 1] | 0, f2, b[ca2 >> 1] | 0, da2);
+        } else {
+          z2 = Oa(7, Ta2) | 0;
+          Ha(z2, 7, Ia2, 64, Sa2, Ua2, Qa2, b[ba2 >> 1] | 0, b[Fa2 >> 1] | 0, f2, b[ca2 >> 1] | 0, da2);
+        }
+        z2 = b[ea2 >> 1] | 0;
+        p2 = b[P2 >> 1] | 0;
+        z2 = p2 << 16 >> 16 < z2 << 16 >> 16 ? p2 : z2;
+        p2 = b[Q2 >> 1] | 0;
+        z2 = p2 << 16 >> 16 < z2 << 16 >> 16 ? p2 : z2;
+        p2 = b[R2 >> 1] | 0;
+        z2 = p2 << 16 >> 16 < z2 << 16 >> 16 ? p2 : z2;
+        p2 = z2 << 16 >> 16 < 8 ? z2 : 8;
+        h2 = c[Ua2 >> 2] | 0;
+        if (z2 << 16 >> 16 > 0 & (h2 | 0) < 134217728) {
+          j2 = 0;
+          do {
+            h2 = h2 << 1;
+            j2 = (j2 & 65535) + 1 | 0;
+            o2 = j2 & 65535;
+          } while ((h2 | 0) < 134217728 ? p2 << 16 >> 16 > o2 << 16 >> 16 : 0);
+        } else
+          o2 = 0;
+        s2 = (h2 | 0) == 2147483647 ? 32767 : (h2 + 32768 | 0) >>> 16 & 65535;
+        z2 = o2 & 65535;
+        Gb(x2 + -496 | 0, 312, z2 - (e[fa2 >> 1] | 0) & 65535);
+        b[fa2 >> 1] = o2;
+        if (ga2) {
+          b[T2 >> 1] = b[S2 >> 1] | 0;
+          b[S2 >> 1] = b[U2 >> 1] | 0;
+          b[U2 >> 1] = b[V2 >> 1] | 0;
+          b[V2 >> 1] = b[pa2 >> 1] | 0;
+          h2 = b[Ra2 >> 1] | 0;
+          b[pa2 >> 1] = h2;
+          b[qa2 >> 1] = h2;
+          b[M2 >> 1] = 0;
+          h2 = 63;
+        } else
+          h2 = 63;
+        while (1) {
+          w2 = b[Ca2 + (h2 + C2 << 1) >> 1] | 0;
+          b[Wa2 + (h2 << 1) >> 1] = (((w2 << 16 >> 16 != 32767 & 1) << 2) + (w2 << 16 >> 16) | 0) >>> 3;
+          if ((h2 | 0) > 0)
+            h2 = h2 + -1 | 0;
+          else
+            break;
+        }
+        r2 = b[Sa2 >> 1] | 0;
+        if (n2) {
+          q2 = r2 << 16 >> 16;
+          h2 = (q2 << 17 >> 17 | 0) == (q2 | 0) ? q2 << 1 : q2 >>> 15 ^ 32767;
+          p2 = h2 & 65535;
+          if (p2 << 16 >> 16 > 16384) {
+            h2 = h2 << 16 >> 16;
+            j2 = 0;
+            do {
+              v2 = N(h2, b[Wa2 + (j2 << 1) >> 1] | 0) | 0;
+              w2 = v2 >> 31;
+              w2 = N(((v2 >> 30 | 0) == (w2 | 0) ? v2 >>> 15 : w2 ^ 32767) << 16 >> 16, q2) | 0;
+              b[Ja2 + (j2 << 1) >> 1] = (w2 | 0) == 1073741824 ? 16384 : ((w2 << 1 >> 1) + 32768 | 0) >>> 16 & 65535;
+              j2 = j2 + 1 | 0;
+            } while ((j2 | 0) != 64);
+            w2 = p2;
+          } else
+            w2 = p2;
+        } else
+          w2 = 0;
+        v2 = (Ib(Wa2, -3, r2, Ia2, s2, 64) | 0) << 16 >> 16;
+        b[aa2 >> 1] = (v2 >>> 2) + 8192;
+        u2 = Wa2;
+        j2 = x2;
+        t2 = u2 + 128 | 0;
+        do {
+          a[u2 >> 0] = a[j2 >> 0] | 0;
+          u2 = u2 + 1 | 0;
+          j2 = j2 + 1 | 0;
+        } while ((u2 | 0) < (t2 | 0));
+        h2 = s2 << 16 >> 16;
+        j2 = b[Sa2 >> 1] | 0;
+        q2 = 1;
+        p2 = 0;
+        do {
+          t2 = N(b[Ia2 + (p2 << 1) >> 1] | 0, h2) | 0;
+          t2 = (t2 | 0) == 1073741824 ? 2147483647 : t2 << 1;
+          u2 = t2 << 5;
+          t2 = (u2 >> 5 | 0) == (t2 | 0) ? u2 : t2 >> 31 ^ 2147483647;
+          u2 = Ca2 + (p2 + C2 << 1) | 0;
+          s2 = N(j2, b[u2 >> 1] | 0) | 0;
+          s2 = (s2 | 0) == 1073741824 ? 2147483647 : s2 << 1;
+          x2 = t2 + s2 | 0;
+          x2 = (t2 ^ s2 | 0) > -1 & (x2 ^ t2 | 0) < 0 ? t2 >> 31 ^ 2147483647 : x2;
+          t2 = x2 << 1;
+          x2 = (t2 >> 1 | 0) == (x2 | 0) ? t2 : x2 >> 31 ^ 2147483647;
+          x2 = (x2 | 0) == 2147483647 ? 32767 : (x2 + 32768 | 0) >>> 16 & 65535;
+          b[u2 >> 1] = x2;
+          x2 = (x2 & 65535) - ((x2 & 65535) >>> 15 & 65535) << 16;
+          q2 = x2 >> 16 ^ x2 >> 31 | q2;
+          p2 = p2 + 1 | 0;
+        } while ((p2 | 0) != 64);
+        r2 = o2 << 16 >> 16;
+        u2 = ((((gb(q2) | 0) & 65535) << 16) + -1048576 >> 16) + r2 | 0;
+        x2 = u2 >> 31;
+        b[ia2 >> 1] = b[ha2 >> 1] | 0;
+        b[ha2 >> 1] = b[ja2 >> 1] | 0;
+        b[ja2 >> 1] = b[ea2 >> 1] | 0;
+        b[ea2 >> 1] = ((u2 >> 15 | 0) == (x2 | 0) ? u2 : x2 ^ 32767) + 65535;
+        switch (d2 << 16 >> 16) {
+          case 0:
+          case 9: {
+            h2 = 0;
+            break;
+          }
+          default:
+            h2 = n2 ? 1 : 2;
+        }
+        kb((c[Ua2 >> 2] | 0) >>> 16 & 65535, b[Sa2 >> 1] | 0, Ia2, h2, ka2, k2);
+        p2 = N(16384 - (v2 >>> 1) << 16 >> 16, E2) | 0;
+        j2 = p2 >> 31;
+        j2 = (p2 >> 30 | 0) == (j2 | 0) ? p2 >>> 15 : j2 ^ 32767;
+        p2 = c[Ua2 >> 2] | 0;
+        h2 = c[F2 >> 2] | 0;
+        q2 = ((p2 | 0) < 0) << 31 >> 31;
+        if ((p2 | 0) < (h2 | 0)) {
+          x2 = bc(p2 | 0, q2 | 0, 408027136, 0) | 0;
+          x2 = cc(x2 | 0, y | 0, 31) | 0;
+          x2 = (x2 & -2) + p2 | 0;
+          h2 = (x2 | 0) > (h2 | 0) ? h2 : x2;
+        } else {
+          x2 = bc(p2 | 0, q2 | 0, 1804599296, 0) | 0;
+          x2 = cc(x2 | 0, y | 0, 31) | 0;
+          x2 = x2 & -2;
+          h2 = (x2 | 0) < (h2 | 0) ? h2 : x2;
+        }
+        c[F2 >> 2] = h2;
+        u2 = j2 << 16;
+        x2 = 32767 - j2 << 16;
+        x2 = bc(p2 | 0, q2 | 0, x2 | 0, ((x2 | 0) < 0) << 31 >> 31 | 0) | 0;
+        x2 = cc(x2 | 0, y | 0, 31) | 0;
+        t2 = y;
+        u2 = bc(h2 | 0, ((h2 | 0) < 0) << 31 >> 31 | 0, u2 | 0, ((u2 | 0) < 0) << 31 >> 31 | 0) | 0;
+        u2 = cc(u2 | 0, y | 0, 31) | 0;
+        h2 = (x2 & -2) + (u2 & -2) | 0;
+        h2 = (x2 ^ u2 | 0) > -1 & (h2 ^ x2 | 0) < 0 ? x2 >> 31 ^ 2147483647 : h2;
+        c[Ua2 >> 2] = h2;
+        if (o2 << 16 >> 16 > 0) {
+          x2 = h2 << r2;
+          h2 = (x2 >> r2 | 0) == (h2 | 0) ? x2 : h2 >> 31 ^ 2147483647;
+        } else
+          h2 = h2 >> (0 - r2 & 15);
+        r2 = b[Ia2 >> 1] | 0;
+        j2 = (r2 & 65535) << 16;
+        p2 = b[G2 >> 1] | 0;
+        t2 = (v2 >>> 3 << 16) + 268435456 >> 16;
+        v2 = N(t2, p2 << 16 >> 16) | 0;
+        v2 = (v2 | 0) == 1073741824 ? 2147483647 : v2 << 1;
+        x2 = j2 - v2 | 0;
+        x2 = ((x2 ^ j2) & (v2 ^ j2) | 0) < 0 ? j2 >> 31 ^ 2147483647 : x2;
+        h2 = (h2 | 0) == 2147483647 ? 32767 : h2 + 32768 >> 16;
+        x2 = N((x2 | 0) == 2147483647 ? 32767 : x2 + 32768 >> 16, h2) | 0;
+        x2 = (x2 | 0) == 1073741824 ? 2147483647 : x2 << 1;
+        j2 = x2 << 5;
+        x2 = (j2 >> 5 | 0) == (x2 | 0) ? j2 : x2 >> 31 ^ 2147483647;
+        j2 = b[Sa2 >> 1] | 0;
+        v2 = N(j2, b[Wa2 >> 1] | 0) | 0;
+        v2 = (v2 | 0) == 1073741824 ? 2147483647 : v2 << 1;
+        s2 = x2 + v2 | 0;
+        s2 = (x2 ^ v2 | 0) > -1 & (s2 ^ x2 | 0) < 0 ? x2 >> 31 ^ 2147483647 : s2;
+        x2 = s2 << 1;
+        s2 = (x2 >> 1 | 0) == (s2 | 0) ? x2 : s2 >> 31 ^ 2147483647;
+        b[Wa2 >> 1] = (s2 | 0) == 2147483647 ? 32767 : (s2 + 32768 | 0) >>> 16 & 65535;
+        s2 = 1;
+        while (1) {
+          v2 = (p2 & 65535) << 16;
+          x2 = s2;
+          s2 = s2 + 1 | 0;
+          q2 = b[Ia2 + (s2 << 1) >> 1] | 0;
+          r2 = N((r2 & 65535) + (q2 & 65535) << 16 >> 16, t2) | 0;
+          r2 = (r2 | 0) == 1073741824 ? 2147483647 : r2 << 1;
+          u2 = v2 - r2 | 0;
+          u2 = ((u2 ^ v2) & (r2 ^ v2) | 0) < 0 ? v2 >> 31 ^ 2147483647 : u2;
+          u2 = N((u2 | 0) == 2147483647 ? 32767 : u2 + 32768 >> 16, h2) | 0;
+          u2 = (u2 | 0) == 1073741824 ? 2147483647 : u2 << 1;
+          r2 = u2 << 5;
+          u2 = (r2 >> 5 | 0) == (u2 | 0) ? r2 : u2 >> 31 ^ 2147483647;
+          x2 = Wa2 + (x2 << 1) | 0;
+          r2 = N(j2, b[x2 >> 1] | 0) | 0;
+          r2 = (r2 | 0) == 1073741824 ? 2147483647 : r2 << 1;
+          v2 = u2 + r2 | 0;
+          v2 = (u2 ^ r2 | 0) > -1 & (v2 ^ u2 | 0) < 0 ? u2 >> 31 ^ 2147483647 : v2;
+          u2 = v2 << 1;
+          v2 = (u2 >> 1 | 0) == (v2 | 0) ? u2 : v2 >> 31 ^ 2147483647;
+          b[x2 >> 1] = (v2 | 0) == 2147483647 ? 32767 : (v2 + 32768 | 0) >>> 16 & 65535;
+          if ((s2 | 0) == 63)
+            break;
+          else {
+            r2 = p2;
+            p2 = q2;
+          }
+        }
+        u2 = e[H2 >> 1] << 16;
+        x2 = N(t2, b[I2 >> 1] | 0) | 0;
+        x2 = (x2 | 0) == 1073741824 ? 2147483647 : x2 << 1;
+        v2 = u2 - x2 | 0;
+        v2 = ((v2 ^ u2) & (x2 ^ u2) | 0) < 0 ? u2 >> 31 ^ 2147483647 : v2;
+        v2 = N((v2 | 0) == 2147483647 ? 32767 : v2 + 32768 >> 16, h2) | 0;
+        v2 = (v2 | 0) == 1073741824 ? 2147483647 : v2 << 1;
+        u2 = v2 << 5;
+        v2 = (u2 >> 5 | 0) == (v2 | 0) ? u2 : v2 >> 31 ^ 2147483647;
+        u2 = N(j2, b[J2 >> 1] | 0) | 0;
+        u2 = (u2 | 0) == 1073741824 ? 2147483647 : u2 << 1;
+        x2 = v2 + u2 | 0;
+        x2 = (v2 ^ u2 | 0) > -1 & (x2 ^ v2 | 0) < 0 ? v2 >> 31 ^ 2147483647 : x2;
+        v2 = x2 << 1;
+        x2 = (v2 >> 1 | 0) == (x2 | 0) ? v2 : x2 >> 31 ^ 2147483647;
+        b[J2 >> 1] = (x2 | 0) == 2147483647 ? 32767 : (x2 + 32768 | 0) >>> 16 & 65535;
+        if (n2 & w2 << 16 >> 16 > 16384) {
+          h2 = 0;
+          do {
+            x2 = Ja2 + (h2 << 1) | 0;
+            v2 = (b[Wa2 + (h2 << 1) >> 1] | 0) + (b[x2 >> 1] | 0) | 0;
+            w2 = v2 >> 31;
+            b[x2 >> 1] = (v2 >> 15 | 0) == (w2 | 0) ? v2 : w2 ^ 32767;
+            h2 = h2 + 1 | 0;
+          } while ((h2 | 0) != 64);
+          va(Wa2, Ja2, 64);
+          u2 = Wa2;
+          j2 = Ja2;
+          t2 = u2 + 128 | 0;
+          do {
+            a[u2 >> 0] = a[j2 >> 0] | 0;
+            u2 = u2 + 1 | 0;
+            j2 = j2 + 1 | 0;
+          } while ((u2 | 0) < (t2 | 0));
+        }
+        switch (d2 << 16 >> 16) {
+          case 0:
+          case 9: {
+            h2 = b[7702 + (B2 << 16 >> 16 >> 6 << 16 >> 16 << 1) >> 1] | 0;
+            n2 = 32767 - h2 | 0;
+            j2 = n2 >> 31;
+            j2 = ((n2 >> 15 | 0) == (j2 | 0) ? n2 : j2 ^ 32767) << 16 >> 16;
+            n2 = 0;
+            do {
+              x2 = N(j2, b[$a2 + (n2 << 1) >> 1] | 0) | 0;
+              x2 = (x2 | 0) == 1073741824 ? 2147483647 : x2 << 1;
+              w2 = N(b[Ya2 + (n2 << 1) >> 1] | 0, h2) | 0;
+              w2 = (w2 | 0) == 1073741824 ? 2147483647 : w2 << 1;
+              B2 = x2 + w2 | 0;
+              B2 = (x2 ^ w2 | 0) > -1 & (B2 ^ x2 | 0) < 0 ? x2 >> 31 ^ 2147483647 : B2;
+              b[bb2 + (n2 << 1) >> 1] = (B2 | 0) == 2147483647 ? 32767 : (B2 + 32768 | 0) >>> 16 & 65535;
+              n2 = n2 + 1 | 0;
+            } while ((n2 | 0) != 16);
+            break;
+          }
+          default: {
+            B2 = K2;
+            x2 = B2;
+            b[x2 >> 1] = 0;
+            b[x2 + 2 >> 1] = 0 >>> 16;
+            B2 = B2 + 4 | 0;
+            b[B2 >> 1] = 0;
+            b[B2 + 2 >> 1] = 0 >>> 16;
+          }
+        }
+        if (L2)
+          h2 = Oa(4, Ta2) | 0;
+        else
+          h2 = 0;
+        Hb(D2, Wa2, o2, g2 + ((C2 >> 2) + C2 << 1) | 0, h2, bb2, cb2, 0, i2, Qa2, k2);
+        j2 = C2 + 64 | 0;
+        B2 = j2 & 65535;
+        if (B2 << 16 >> 16 >= 256)
+          break;
+        else {
+          D2 = D2 + 34 | 0;
+          h2 = A2;
+          C2 = j2 << 16 >> 16;
+        }
+      }
+      ec(i2 | 0, k2 + 1204 | 0, 496) | 0;
+      Gb(Ca2, 256, 0 - z2 & 65535);
+      Ma(Ga2, Ya2, Ca2);
+      b[La2 >> 1] = 0;
+      b[ba2 >> 1] = Qa2;
+      l = db2;
+      return 0;
+    }
+    function sb(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      a2 = (N(b2 << 16 >> 16, a2 << 16 >> 16) | 0) + 16384 | 0;
+      b2 = a2 >> 31;
+      return ((a2 >> 30 | 0) == (b2 | 0) ? a2 >>> 15 : b2 ^ 32767) & 65535 | 0;
+    }
+    function tb(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      var c2 = 0, d2 = 0;
+      a2 = a2 << 16 >> 16;
+      c2 = b2 << 16 >> 16;
+      d2 = a2 >> (c2 & 15) & 65535;
+      if (!(b2 << 16 >> 16))
+        return d2 | 0;
+      else
+        return ((1 << c2 + -1 & a2 | 0) != 0 & 1) + d2 << 16 >> 16 | 0;
+    }
+    function ub(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      var c2 = 0, d2 = 0, e2 = 0, f2 = 0, g2 = 0;
+      c2 = b2 << 16 >> 16;
+      if (a2 << 16 >> 16 < 1 ? 1 : a2 << 16 >> 16 > b2 << 16 >> 16) {
+        c2 = 0;
+        return c2 | 0;
+      }
+      if (a2 << 16 >> 16 == b2 << 16 >> 16) {
+        c2 = 32767;
+        return c2 | 0;
+      }
+      b2 = c2 << 1;
+      d2 = c2 << 2;
+      a2 = a2 << 16 >> 16 << 3;
+      e2 = (a2 | 0) < (d2 | 0);
+      a2 = a2 - (e2 ? 0 : d2) | 0;
+      e2 = e2 ? 0 : 4;
+      g2 = (a2 | 0) < (b2 | 0);
+      a2 = a2 - (g2 ? 0 : b2) | 0;
+      f2 = (a2 | 0) < (c2 | 0);
+      e2 = ((g2 ? e2 : e2 | 2) | (f2 ^ 1) & 1) << 3;
+      f2 = a2 - (f2 ? 0 : c2) << 3;
+      a2 = (f2 | 0) < (d2 | 0);
+      f2 = f2 - (a2 ? 0 : d2) | 0;
+      e2 = a2 ? e2 : e2 | 4;
+      a2 = (f2 | 0) < (b2 | 0);
+      f2 = f2 - (a2 ? 0 : b2) | 0;
+      g2 = (f2 | 0) < (c2 | 0);
+      e2 = ((a2 ? e2 : e2 | 2) | (g2 ^ 1) & 1) << 16 >> 13;
+      g2 = f2 - (g2 ? 0 : c2) << 3;
+      f2 = (g2 | 0) < (d2 | 0);
+      g2 = g2 - (f2 ? 0 : d2) | 0;
+      e2 = f2 ? e2 : e2 & 65528 | 4;
+      f2 = (g2 | 0) < (b2 | 0);
+      g2 = g2 - (f2 ? 0 : b2) | 0;
+      a2 = (g2 | 0) < (c2 | 0);
+      e2 = ((f2 ? e2 : e2 | 2) | (a2 ^ 1) & 1) << 16 >> 13;
+      a2 = g2 - (a2 ? 0 : c2) << 3;
+      g2 = (a2 | 0) < (d2 | 0);
+      a2 = a2 - (g2 ? 0 : d2) | 0;
+      e2 = g2 ? e2 : e2 & 65528 | 4;
+      g2 = (a2 | 0) < (b2 | 0);
+      a2 = a2 - (g2 ? 0 : b2) | 0;
+      f2 = (a2 | 0) < (c2 | 0);
+      e2 = ((g2 ? e2 : e2 | 2) | (f2 ^ 1) & 1) << 16 >> 13;
+      f2 = a2 - (f2 ? 0 : c2) << 3;
+      a2 = (f2 | 0) < (d2 | 0);
+      d2 = f2 - (a2 ? 0 : d2) | 0;
+      e2 = a2 ? e2 : e2 & 65528 | 4;
+      a2 = (d2 | 0) < (b2 | 0);
+      c2 = ((a2 ? e2 : e2 | 2) | (d2 - (a2 ? 0 : b2) | 0) >= (c2 | 0)) & 65535;
+      return c2 | 0;
+    }
+    function vb(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, c2 = 0, d2 = 0, f2 = 0, g2 = 0;
+      b2 = gb(a2) | 0;
+      a2 = a2 << (b2 << 16 >> 16);
+      do
+        if ((a2 | 0) < 1) {
+          a2 = 0;
+          b2 = 2147483647;
+        } else {
+          f2 = a2 >>> (1 - b2 & 1);
+          a2 = ((31 - (b2 & 65535) << 16 >> 16) + 131071 | 0) >>> 1;
+          c2 = 0 - a2 | 0;
+          b2 = (f2 >> 25 << 16) + -1048576 >> 16;
+          g2 = e[7842 + (b2 << 1) >> 1] | 0;
+          d2 = g2 << 16;
+          f2 = N(g2 - (e[7842 + (b2 + 1 << 1) >> 1] | 0) << 16 >> 16, f2 >>> 10 & 32767) | 0;
+          f2 = (f2 | 0) == 1073741824 ? 2147483647 : f2 << 1;
+          b2 = d2 - f2 | 0;
+          b2 = ((b2 ^ d2) & (f2 ^ d2) | 0) < 0 ? d2 >> 31 ^ 2147483647 : b2;
+          if ((a2 & 65535) << 16 >> 16 != -32768) {
+            a2 = c2 << 16 >> 16;
+            if ((c2 & 65535) << 16 >> 16 <= 0)
+              break;
+          } else
+            a2 = 32767;
+          g2 = b2 << a2;
+          g2 = (g2 >> a2 | 0) == (b2 | 0) ? g2 : b2 >> 31 ^ 2147483647;
+          return g2 | 0;
+        }
+      while (0);
+      g2 = b2 >> (0 - a2 & 15);
+      return g2 | 0;
+    }
+    function wb(a2, d2) {
+      a2 = a2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0;
+      f2 = c[a2 >> 2] | 0;
+      if ((f2 | 0) < 1) {
+        b[d2 >> 1] = 0;
+        g2 = 2147483647;
+        c[a2 >> 2] = g2;
+        return;
+      }
+      g2 = b[d2 >> 1] | 0;
+      if (g2 & 1) {
+        f2 = f2 >>> 1;
+        c[a2 >> 2] = f2;
+      }
+      g2 = ((g2 << 16 >> 16) + 131071 | 0) >>> 1;
+      b[d2 >> 1] = (g2 & 65535) << 16 >> 16 == -32768 ? 32767 : 0 - g2 & 65535;
+      g2 = (f2 >> 25 << 16) + -1048576 >> 16;
+      h2 = e[7842 + (g2 << 1) >> 1] | 0;
+      d2 = h2 << 16;
+      c[a2 >> 2] = d2;
+      f2 = N(h2 - (e[7842 + (g2 + 1 << 1) >> 1] | 0) << 16 >> 16, f2 >>> 10 & 32767) | 0;
+      f2 = (f2 | 0) == 1073741824 ? 2147483647 : f2 << 1;
+      g2 = d2 - f2 | 0;
+      g2 = ((g2 ^ d2) & (f2 ^ d2) | 0) < 0 ? d2 >> 31 ^ 2147483647 : g2;
+      c[a2 >> 2] = g2;
+      return;
+    }
+    function xb(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      var d2 = 0, f2 = 0;
+      d2 = c2 << 16 >> 16 >> 10 << 16 >> 16;
+      f2 = b[7710 + (d2 << 1) >> 1] | 0;
+      d2 = (f2 << 15) - (N(f2 - (e[7710 + (d2 + 1 << 1) >> 1] | 0) << 16 >> 16, c2 << 16 >> 16 << 5 & 32736) | 0) | 0;
+      a2 = 29 - (a2 & 65535) | 0;
+      c2 = a2 << 16 >> 16;
+      return ((a2 & 65535) << 16 >> 16 == 0 ? d2 : (d2 >>> (c2 + -1 | 0) & 1) + (d2 >> c2) | 0) | 0;
+    }
+    function yb(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0;
+      f2 = d2 << 16 >> 16 >> 3;
+      if (!(f2 << 16 >> 16)) {
+        f2 = 1;
+        c2 = gb(f2) | 0;
+        c2 = c2 << 16 >> 16;
+        f2 = f2 << c2;
+        c2 = 30 - c2 | 0;
+        c2 = c2 & 65535;
+        b[e2 >> 1] = c2;
+        return f2 | 0;
+      } else
+        d2 = 1;
+      while (1) {
+        h2 = N(b[c2 >> 1] | 0, b[a2 >> 1] | 0) | 0;
+        h2 = (h2 | 0) == 1073741824 ? 2147483647 : h2 << 1;
+        g2 = h2 + d2 | 0;
+        g2 = (h2 ^ d2 | 0) > -1 & (g2 ^ d2 | 0) < 0 ? d2 >> 31 ^ 2147483647 : g2;
+        h2 = N(b[c2 + 2 >> 1] | 0, b[a2 + 2 >> 1] | 0) | 0;
+        h2 = (h2 | 0) == 1073741824 ? 2147483647 : h2 << 1;
+        d2 = g2 + h2 | 0;
+        d2 = (g2 ^ h2 | 0) > -1 & (d2 ^ g2 | 0) < 0 ? g2 >> 31 ^ 2147483647 : d2;
+        g2 = N(b[c2 + 4 >> 1] | 0, b[a2 + 4 >> 1] | 0) | 0;
+        g2 = (g2 | 0) == 1073741824 ? 2147483647 : g2 << 1;
+        h2 = d2 + g2 | 0;
+        h2 = (d2 ^ g2 | 0) > -1 & (h2 ^ d2 | 0) < 0 ? d2 >> 31 ^ 2147483647 : h2;
+        d2 = N(b[c2 + 6 >> 1] | 0, b[a2 + 6 >> 1] | 0) | 0;
+        d2 = (d2 | 0) == 1073741824 ? 2147483647 : d2 << 1;
+        g2 = h2 + d2 | 0;
+        g2 = (h2 ^ d2 | 0) > -1 & (g2 ^ h2 | 0) < 0 ? h2 >> 31 ^ 2147483647 : g2;
+        h2 = N(b[c2 + 8 >> 1] | 0, b[a2 + 8 >> 1] | 0) | 0;
+        h2 = (h2 | 0) == 1073741824 ? 2147483647 : h2 << 1;
+        d2 = g2 + h2 | 0;
+        d2 = (g2 ^ h2 | 0) > -1 & (d2 ^ g2 | 0) < 0 ? g2 >> 31 ^ 2147483647 : d2;
+        g2 = N(b[c2 + 10 >> 1] | 0, b[a2 + 10 >> 1] | 0) | 0;
+        g2 = (g2 | 0) == 1073741824 ? 2147483647 : g2 << 1;
+        h2 = d2 + g2 | 0;
+        h2 = (d2 ^ g2 | 0) > -1 & (h2 ^ d2 | 0) < 0 ? d2 >> 31 ^ 2147483647 : h2;
+        d2 = N(b[c2 + 12 >> 1] | 0, b[a2 + 12 >> 1] | 0) | 0;
+        d2 = (d2 | 0) == 1073741824 ? 2147483647 : d2 << 1;
+        g2 = h2 + d2 | 0;
+        g2 = (h2 ^ d2 | 0) > -1 & (g2 ^ h2 | 0) < 0 ? h2 >> 31 ^ 2147483647 : g2;
+        h2 = N(b[c2 + 14 >> 1] | 0, b[a2 + 14 >> 1] | 0) | 0;
+        h2 = (h2 | 0) == 1073741824 ? 2147483647 : h2 << 1;
+        d2 = g2 + h2 | 0;
+        d2 = (g2 ^ h2 | 0) > -1 & (d2 ^ g2 | 0) < 0 ? g2 >> 31 ^ 2147483647 : d2;
+        f2 = f2 + -1 << 16 >> 16;
+        if (!(f2 << 16 >> 16))
+          break;
+        else {
+          a2 = a2 + 16 | 0;
+          c2 = c2 + 16 | 0;
+        }
+      }
+      g2 = gb(d2) | 0;
+      g2 = g2 << 16 >> 16;
+      h2 = d2 << g2;
+      g2 = 30 - g2 | 0;
+      g2 = g2 & 65535;
+      b[e2 >> 1] = g2;
+      return h2 | 0;
+    }
+    function zb(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0;
+      g2 = gb(a2) | 0;
+      f2 = g2 << 16 >> 16;
+      if (g2 << 16 >> 16 > 0) {
+        h2 = a2 << f2;
+        a2 = (h2 >> f2 | 0) == (a2 | 0) ? h2 : a2 >> 31 ^ 2147483647;
+      } else
+        a2 = a2 >> (0 - f2 & 15);
+      if ((a2 | 0) < 1) {
+        b[c2 >> 1] = 0;
+        h2 = 0;
+        b[d2 >> 1] = h2;
+        return;
+      } else {
+        b[c2 >> 1] = 30 - (g2 & 65535);
+        f2 = (a2 >>> 25 << 16) + -2097152 >> 16;
+        g2 = b[7776 + (f2 << 1) >> 1] | 0;
+        c2 = g2 << 16;
+        f2 = N(g2 - (e[7776 + (f2 + 1 << 1) >> 1] | 0) << 16 >> 16, a2 >>> 10 & 32767) | 0;
+        f2 = (f2 | 0) == 1073741824 ? 2147483647 : f2 << 1;
+        h2 = c2 - f2 | 0;
+        h2 = (((h2 ^ c2) & (f2 ^ c2) | 0) < 0 ? g2 >> 15 ^ 2147418112 : h2) >>> 16 & 65535;
+        b[d2 >> 1] = h2;
+        return;
+      }
+    }
+    function Ab(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      b[c2 >> 1] = a2 >>> 16;
+      b[d2 >> 1] = a2 >>> 1 & 32767;
+      return;
+    }
+    function Bb(a2, b2, c2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0;
+      f2 = a2 << 16 >> 16;
+      a2 = c2 << 16 >> 16;
+      e2 = N(a2, f2) | 0;
+      e2 = (e2 | 0) == 1073741824 ? 2147483647 : e2 << 1;
+      c2 = N(d2 << 16 >> 16, f2) | 0;
+      d2 = c2 >> 31;
+      d2 = ((c2 >> 30 | 0) == (d2 | 0) ? c2 >>> 15 : d2 ^ 32767) << 16 >> 15;
+      c2 = d2 + e2 | 0;
+      c2 = (d2 ^ e2 | 0) > -1 & (c2 ^ e2 | 0) < 0 ? e2 >> 31 ^ 2147483647 : c2;
+      d2 = N(a2, b2 << 16 >> 16) | 0;
+      b2 = d2 >> 31;
+      b2 = ((d2 >> 30 | 0) == (b2 | 0) ? d2 >>> 15 : b2 ^ 32767) << 16 >> 15;
+      d2 = c2 + b2 | 0;
+      return ((c2 ^ b2 | 0) > -1 & (d2 ^ c2 | 0) < 0 ? c2 >> 31 ^ 2147483647 : d2) | 0;
+    }
+    function Cb(a2, c2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      var d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0;
+      b[c2 >> 1] = b[8740 + (b[a2 >> 1] << 1 << 1) >> 1] | 0;
+      r2 = c2 + 2 | 0;
+      b[r2 >> 1] = b[8740 + ((b[a2 >> 1] << 1 | 1) << 1) >> 1] | 0;
+      l2 = a2 + 2 | 0;
+      s2 = a2 + 4 | 0;
+      q2 = c2 + 4 | 0;
+      b[q2 >> 1] = b[8996 + ((b[l2 >> 1] | 0) * 3 << 1) >> 1] | 0;
+      n2 = c2 + 10 | 0;
+      b[n2 >> 1] = b[9380 + ((b[s2 >> 1] | 0) * 3 << 1) >> 1] | 0;
+      p2 = c2 + 6 | 0;
+      b[p2 >> 1] = b[8996 + (((b[l2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0;
+      m2 = c2 + 12 | 0;
+      b[m2 >> 1] = b[9380 + (((b[s2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0;
+      o2 = c2 + 8 | 0;
+      b[o2 >> 1] = b[8996 + (((b[l2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0;
+      l2 = c2 + 14 | 0;
+      b[l2 >> 1] = b[9380 + (((b[s2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0;
+      s2 = a2 + 6 | 0;
+      d2 = a2 + 8 | 0;
+      k2 = c2 + 16 | 0;
+      b[k2 >> 1] = b[9764 + (b[s2 >> 1] << 2 << 1) >> 1] | 0;
+      g2 = c2 + 24 | 0;
+      b[g2 >> 1] = b[10020 + (b[d2 >> 1] << 2 << 1) >> 1] | 0;
+      j2 = c2 + 18 | 0;
+      b[j2 >> 1] = b[9764 + ((b[s2 >> 1] << 2 | 1) << 1) >> 1] | 0;
+      f2 = c2 + 26 | 0;
+      b[f2 >> 1] = b[10020 + ((b[d2 >> 1] << 2 | 1) << 1) >> 1] | 0;
+      i2 = c2 + 20 | 0;
+      b[i2 >> 1] = b[9764 + ((b[s2 >> 1] << 2 | 2) << 1) >> 1] | 0;
+      e2 = c2 + 28 | 0;
+      b[e2 >> 1] = b[10020 + ((b[d2 >> 1] << 2 | 2) << 1) >> 1] | 0;
+      h2 = c2 + 22 | 0;
+      b[h2 >> 1] = b[9764 + ((b[s2 >> 1] << 2 | 3) << 1) >> 1] | 0;
+      a2 = c2 + 30 | 0;
+      b[a2 >> 1] = b[10020 + ((b[d2 >> 1] << 2 | 3) << 1) >> 1] | 0;
+      d2 = (b[4354] | 0) + (b[c2 >> 1] | 0) | 0;
+      s2 = d2 >> 31;
+      b[c2 >> 1] = (d2 >> 15 | 0) == (s2 | 0) ? d2 : s2 ^ 32767;
+      s2 = (b[4355] | 0) + (b[r2 >> 1] | 0) | 0;
+      d2 = s2 >> 31;
+      b[r2 >> 1] = (s2 >> 15 | 0) == (d2 | 0) ? s2 : d2 ^ 32767;
+      r2 = (b[4356] | 0) + (b[q2 >> 1] | 0) | 0;
+      d2 = r2 >> 31;
+      b[q2 >> 1] = (r2 >> 15 | 0) == (d2 | 0) ? r2 : d2 ^ 32767;
+      q2 = (b[4357] | 0) + (b[p2 >> 1] | 0) | 0;
+      d2 = q2 >> 31;
+      b[p2 >> 1] = (q2 >> 15 | 0) == (d2 | 0) ? q2 : d2 ^ 32767;
+      p2 = (b[4358] | 0) + (b[o2 >> 1] | 0) | 0;
+      d2 = p2 >> 31;
+      b[o2 >> 1] = (p2 >> 15 | 0) == (d2 | 0) ? p2 : d2 ^ 32767;
+      o2 = (b[4359] | 0) + (b[n2 >> 1] | 0) | 0;
+      d2 = o2 >> 31;
+      b[n2 >> 1] = (o2 >> 15 | 0) == (d2 | 0) ? o2 : d2 ^ 32767;
+      n2 = (b[4360] | 0) + (b[m2 >> 1] | 0) | 0;
+      d2 = n2 >> 31;
+      b[m2 >> 1] = (n2 >> 15 | 0) == (d2 | 0) ? n2 : d2 ^ 32767;
+      m2 = (b[4361] | 0) + (b[l2 >> 1] | 0) | 0;
+      d2 = m2 >> 31;
+      b[l2 >> 1] = (m2 >> 15 | 0) == (d2 | 0) ? m2 : d2 ^ 32767;
+      l2 = (b[4362] | 0) + (b[k2 >> 1] | 0) | 0;
+      d2 = l2 >> 31;
+      b[k2 >> 1] = (l2 >> 15 | 0) == (d2 | 0) ? l2 : d2 ^ 32767;
+      k2 = (b[4363] | 0) + (b[j2 >> 1] | 0) | 0;
+      d2 = k2 >> 31;
+      b[j2 >> 1] = (k2 >> 15 | 0) == (d2 | 0) ? k2 : d2 ^ 32767;
+      j2 = (b[4364] | 0) + (b[i2 >> 1] | 0) | 0;
+      d2 = j2 >> 31;
+      b[i2 >> 1] = (j2 >> 15 | 0) == (d2 | 0) ? j2 : d2 ^ 32767;
+      i2 = (b[4365] | 0) + (b[h2 >> 1] | 0) | 0;
+      d2 = i2 >> 31;
+      b[h2 >> 1] = (i2 >> 15 | 0) == (d2 | 0) ? i2 : d2 ^ 32767;
+      h2 = (b[4366] | 0) + (b[g2 >> 1] | 0) | 0;
+      d2 = h2 >> 31;
+      b[g2 >> 1] = (h2 >> 15 | 0) == (d2 | 0) ? h2 : d2 ^ 32767;
+      g2 = (b[4367] | 0) + (b[f2 >> 1] | 0) | 0;
+      d2 = g2 >> 31;
+      b[f2 >> 1] = (g2 >> 15 | 0) == (d2 | 0) ? g2 : d2 ^ 32767;
+      f2 = (b[4368] | 0) + (b[e2 >> 1] | 0) | 0;
+      d2 = f2 >> 31;
+      b[e2 >> 1] = (f2 >> 15 | 0) == (d2 | 0) ? f2 : d2 ^ 32767;
+      e2 = (b[4369] | 0) + (b[a2 >> 1] | 0) | 0;
+      d2 = e2 >> 31;
+      b[a2 >> 1] = (e2 >> 15 | 0) == (d2 | 0) ? e2 : d2 ^ 32767;
+      Eb(c2, 128, 16);
+      return;
+    }
+    function Db(a2, c2, d2, f2, g2, h2, i2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      var j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0, F2 = 0;
+      z2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      j2 = z2;
+      if (!(h2 << 16 >> 16)) {
+        b[c2 >> 1] = b[10308 + ((b[a2 >> 1] | 0) * 9 << 1) >> 1] | 0;
+        n2 = c2 + 2 | 0;
+        b[n2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 1 << 1) >> 1] | 0;
+        o2 = c2 + 4 | 0;
+        b[o2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 2 << 1) >> 1] | 0;
+        p2 = c2 + 6 | 0;
+        b[p2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 3 << 1) >> 1] | 0;
+        q2 = c2 + 8 | 0;
+        b[q2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 4 << 1) >> 1] | 0;
+        r2 = c2 + 10 | 0;
+        b[r2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 5 << 1) >> 1] | 0;
+        s2 = c2 + 12 | 0;
+        b[s2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 6 << 1) >> 1] | 0;
+        t2 = c2 + 14 | 0;
+        b[t2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 7 << 1) >> 1] | 0;
+        u2 = c2 + 16 | 0;
+        b[u2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 8 << 1) >> 1] | 0;
+        D2 = a2 + 2 | 0;
+        F2 = b[14916 + ((b[D2 >> 1] | 0) * 7 << 1) >> 1] | 0;
+        v2 = c2 + 18 | 0;
+        b[v2 >> 1] = F2;
+        w2 = c2 + 20 | 0;
+        b[w2 >> 1] = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 1 << 1) >> 1] | 0;
+        x2 = c2 + 22 | 0;
+        b[x2 >> 1] = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 2 << 1) >> 1] | 0;
+        E2 = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 3 << 1) >> 1] | 0;
+        y2 = c2 + 24 | 0;
+        b[y2 >> 1] = E2;
+        f2 = c2 + 26 | 0;
+        b[f2 >> 1] = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 4 << 1) >> 1] | 0;
+        j2 = c2 + 28 | 0;
+        b[j2 >> 1] = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 5 << 1) >> 1] | 0;
+        k2 = c2 + 30 | 0;
+        b[k2 >> 1] = b[14916 + (((b[D2 >> 1] | 0) * 7 | 0) + 6 << 1) >> 1] | 0;
+        D2 = a2 + 4 | 0;
+        C2 = a2 + 6 | 0;
+        B2 = a2 + 8 | 0;
+        A2 = a2 + 10 | 0;
+        h2 = a2 + 12 | 0;
+        b[c2 >> 1] = (e[c2 >> 1] | 0) + (e[18500 + ((b[D2 >> 1] | 0) * 3 << 1) >> 1] | 0);
+        b[p2 >> 1] = (e[p2 >> 1] | 0) + (e[18884 + ((b[C2 >> 1] | 0) * 3 << 1) >> 1] | 0);
+        b[s2 >> 1] = (e[s2 >> 1] | 0) + (e[19652 + ((b[B2 >> 1] | 0) * 3 << 1) >> 1] | 0);
+        b[v2 >> 1] = (F2 & 65535) + (e[20420 + ((b[A2 >> 1] | 0) * 3 << 1) >> 1] | 0);
+        b[y2 >> 1] = (E2 & 65535) + (e[20612 + (b[h2 >> 1] << 2 << 1) >> 1] | 0);
+        b[n2 >> 1] = (e[n2 >> 1] | 0) + (e[18500 + (((b[D2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0);
+        b[q2 >> 1] = (e[q2 >> 1] | 0) + (e[18884 + (((b[C2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0);
+        b[t2 >> 1] = (e[t2 >> 1] | 0) + (e[19652 + (((b[B2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0);
+        b[w2 >> 1] = (e[w2 >> 1] | 0) + (e[20420 + (((b[A2 >> 1] | 0) * 3 | 0) + 1 << 1) >> 1] | 0);
+        b[f2 >> 1] = (e[f2 >> 1] | 0) + (e[20612 + ((b[h2 >> 1] << 2 | 1) << 1) >> 1] | 0);
+        b[o2 >> 1] = (e[o2 >> 1] | 0) + (e[18500 + (((b[D2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0);
+        b[r2 >> 1] = (e[r2 >> 1] | 0) + (e[18884 + (((b[C2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0);
+        b[u2 >> 1] = (e[u2 >> 1] | 0) + (e[19652 + (((b[B2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0);
+        b[x2 >> 1] = (e[x2 >> 1] | 0) + (e[20420 + (((b[A2 >> 1] | 0) * 3 | 0) + 2 << 1) >> 1] | 0);
+        b[j2 >> 1] = (e[j2 >> 1] | 0) + (e[20612 + ((b[h2 >> 1] << 2 | 2) << 1) >> 1] | 0);
+        b[k2 >> 1] = (e[k2 >> 1] | 0) + (e[20612 + ((b[h2 >> 1] << 2 | 3) << 1) >> 1] | 0);
+        h2 = 0;
+        do {
+          D2 = c2 + (h2 << 1) | 0;
+          E2 = b[D2 >> 1] | 0;
+          C2 = (e[10276 + (h2 << 1) >> 1] | 0) + (E2 & 65535) | 0;
+          b[D2 >> 1] = C2;
+          F2 = d2 + (h2 << 1) | 0;
+          b[D2 >> 1] = (((b[F2 >> 1] | 0) * 10923 | 0) >>> 15) + C2;
+          b[F2 >> 1] = E2;
+          h2 = h2 + 1 | 0;
+        } while ((h2 | 0) != 16);
+        if (i2 << 16 >> 16) {
+          E2 = g2 + 32 | 0;
+          b[g2 + 64 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[g2 >> 1] | 0;
+          b[g2 >> 1] = b[c2 >> 1] | 0;
+          E2 = g2 + 34 | 0;
+          b[g2 + 66 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 2 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[n2 >> 1] | 0;
+          F2 = g2 + 36 | 0;
+          b[g2 + 68 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 4 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[o2 >> 1] | 0;
+          E2 = g2 + 38 | 0;
+          b[g2 + 70 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 6 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[p2 >> 1] | 0;
+          F2 = g2 + 40 | 0;
+          b[g2 + 72 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 8 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[q2 >> 1] | 0;
+          E2 = g2 + 42 | 0;
+          b[g2 + 74 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 10 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[r2 >> 1] | 0;
+          F2 = g2 + 44 | 0;
+          b[g2 + 76 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 12 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[s2 >> 1] | 0;
+          E2 = g2 + 46 | 0;
+          b[g2 + 78 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 14 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[t2 >> 1] | 0;
+          F2 = g2 + 48 | 0;
+          b[g2 + 80 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 16 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[u2 >> 1] | 0;
+          E2 = g2 + 50 | 0;
+          b[g2 + 82 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 18 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[v2 >> 1] | 0;
+          F2 = g2 + 52 | 0;
+          b[g2 + 84 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 20 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[w2 >> 1] | 0;
+          E2 = g2 + 54 | 0;
+          b[g2 + 86 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 22 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[x2 >> 1] | 0;
+          F2 = g2 + 56 | 0;
+          b[g2 + 88 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 24 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[y2 >> 1] | 0;
+          E2 = g2 + 58 | 0;
+          b[g2 + 90 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 26 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[f2 >> 1] | 0;
+          F2 = g2 + 60 | 0;
+          b[g2 + 92 >> 1] = b[F2 >> 1] | 0;
+          E2 = g2 + 28 | 0;
+          b[F2 >> 1] = b[E2 >> 1] | 0;
+          b[E2 >> 1] = b[j2 >> 1] | 0;
+          E2 = g2 + 62 | 0;
+          b[g2 + 94 >> 1] = b[E2 >> 1] | 0;
+          F2 = g2 + 30 | 0;
+          b[E2 >> 1] = b[F2 >> 1] | 0;
+          b[F2 >> 1] = b[k2 >> 1] | 0;
+        }
+      } else {
+        h2 = 0;
+        do {
+          F2 = b[10276 + (h2 << 1) >> 1] | 0;
+          E2 = F2 << 14;
+          C2 = b[g2 + (h2 << 1) >> 1] << 14;
+          D2 = C2 + E2 | 0;
+          D2 = (C2 ^ E2 | 0) > -1 & (D2 ^ E2 | 0) < 0 ? F2 >> 17 ^ 2147483647 : D2;
+          F2 = b[g2 + (h2 + 16 << 1) >> 1] << 14;
+          E2 = F2 + D2 | 0;
+          E2 = (F2 ^ D2 | 0) > -1 & (E2 ^ D2 | 0) < 0 ? D2 >> 31 ^ 2147483647 : E2;
+          D2 = b[g2 + (h2 + 32 << 1) >> 1] << 14;
+          F2 = D2 + E2 | 0;
+          F2 = (D2 ^ E2 | 0) > -1 & (F2 ^ E2 | 0) < 0 ? E2 >> 31 ^ 2147483647 : F2;
+          b[j2 + (h2 << 1) >> 1] = (F2 | 0) == 2147483647 ? 32767 : (F2 + 32768 | 0) >>> 16 & 65535;
+          h2 = h2 + 1 | 0;
+        } while ((h2 | 0) != 16);
+        h2 = 0;
+        do {
+          F2 = (b[f2 + (h2 << 1) >> 1] | 0) * 29491 | 0;
+          E2 = F2 >> 31;
+          C2 = (b[j2 + (h2 << 1) >> 1] | 0) * 3277 | 0;
+          D2 = C2 >> 31;
+          E2 = (((C2 >> 30 | 0) == (D2 | 0) ? C2 >>> 15 : D2 ^ 32767) << 16 >> 16) + (((F2 >> 30 | 0) == (E2 | 0) ? F2 >>> 15 : E2 ^ 32767) << 16 >> 16) | 0;
+          F2 = E2 >> 31;
+          b[c2 + (h2 << 1) >> 1] = (E2 >> 15 | 0) == (F2 | 0) ? E2 : F2 ^ 32767;
+          h2 = h2 + 1 | 0;
+        } while ((h2 | 0) != 16);
+        h2 = 0;
+        do {
+          F2 = d2 + (h2 << 1) | 0;
+          D2 = (b[F2 >> 1] | 0) * 10923 | 0;
+          E2 = D2 >> 31;
+          E2 = (((D2 >> 30 | 0) == (E2 | 0) ? D2 >>> 15 : E2 ^ 32767) << 16 >> 16) + (b[j2 + (h2 << 1) >> 1] | 0) | 0;
+          D2 = E2 >> 31;
+          D2 = (b[c2 + (h2 << 1) >> 1] | 0) - (((E2 >> 15 | 0) == (D2 | 0) ? E2 : D2 ^ 32767) << 16 >> 16) | 0;
+          E2 = D2 >> 31;
+          b[F2 >> 1] = (((D2 >> 15 | 0) == (E2 | 0) ? D2 : E2 ^ 32766) & 65535) << 16 >> 16 >> 1;
+          h2 = h2 + 1 | 0;
+        } while ((h2 | 0) != 16);
+      }
+      h2 = b[c2 >> 1] | 0;
+      if (h2 << 16 >> 16 < 128) {
+        b[c2 >> 1] = 128;
+        h2 = 128;
+      }
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 2 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 4 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 6 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 8 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 10 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 12 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 14 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 16 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 18 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 20 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 22 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 24 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      f2 = (h2 << 16 >> 16) + 128 | 0;
+      h2 = f2 >> 31;
+      h2 = ((f2 >> 15 | 0) == (h2 | 0) ? f2 : h2 ^ 32767) & 65535;
+      f2 = c2 + 26 | 0;
+      j2 = b[f2 >> 1] | 0;
+      if (j2 << 16 >> 16 < h2 << 16 >> 16)
+        b[f2 >> 1] = h2;
+      else
+        h2 = j2;
+      h2 = (h2 << 16 >> 16) + 128 | 0;
+      f2 = h2 >> 31;
+      f2 = ((h2 >> 15 | 0) == (f2 | 0) ? h2 : f2 ^ 32767) & 65535;
+      h2 = c2 + 28 | 0;
+      if ((b[h2 >> 1] | 0) >= f2 << 16 >> 16) {
+        l = z2;
+        return;
+      }
+      b[h2 >> 1] = f2;
+      l = z2;
+      return;
+    }
+    function Eb(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0;
+      h2 = (d2 << 16 >> 16) + -1 | 0;
+      if (d2 << 16 >> 16 <= 1)
+        return;
+      g2 = c2 << 16 >> 16;
+      f2 = 0;
+      d2 = c2;
+      e2 = 0;
+      while (1) {
+        c2 = a2 + (e2 << 1) | 0;
+        e2 = b[c2 >> 1] | 0;
+        if (e2 << 16 >> 16 < d2 << 16 >> 16)
+          b[c2 >> 1] = d2;
+        else
+          d2 = e2;
+        d2 = (d2 << 16 >> 16) + g2 | 0;
+        c2 = d2 >> 31;
+        f2 = f2 + 1 << 16 >> 16;
+        e2 = f2 << 16 >> 16;
+        if ((h2 | 0) <= (e2 | 0))
+          break;
+        else
+          d2 = ((d2 >> 15 | 0) == (c2 | 0) ? d2 : c2 ^ 32767) & 65535;
+      }
+      return;
+    }
+    function Fb(a2, c2, d2, e2, f2, g2, h2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      var i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0;
+      y2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      i2 = y2;
+      if (!(g2 << 16 >> 16)) {
+        b[c2 >> 1] = b[10308 + ((b[a2 >> 1] | 0) * 9 << 1) >> 1] | 0;
+        o2 = c2 + 2 | 0;
+        b[o2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 1 << 1) >> 1] | 0;
+        q2 = c2 + 4 | 0;
+        b[q2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 2 << 1) >> 1] | 0;
+        r2 = c2 + 6 | 0;
+        b[r2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 3 << 1) >> 1] | 0;
+        s2 = c2 + 8 | 0;
+        b[s2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 4 << 1) >> 1] | 0;
+        t2 = c2 + 10 | 0;
+        b[t2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 5 << 1) >> 1] | 0;
+        u2 = c2 + 12 | 0;
+        b[u2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 6 << 1) >> 1] | 0;
+        v2 = c2 + 14 | 0;
+        b[v2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 7 << 1) >> 1] | 0;
+        w2 = c2 + 16 | 0;
+        b[w2 >> 1] = b[10308 + (((b[a2 >> 1] | 0) * 9 | 0) + 8 << 1) >> 1] | 0;
+        z2 = a2 + 2 | 0;
+        g2 = a2 + 8 | 0;
+        p2 = (b[23172 + ((b[g2 >> 1] | 0) * 7 << 1) >> 1] | 0) + (b[14916 + ((b[z2 >> 1] | 0) * 7 << 1) >> 1] | 0) | 0;
+        A2 = p2 >> 31;
+        x2 = c2 + 18 | 0;
+        b[x2 >> 1] = (p2 >> 15 | 0) == (A2 | 0) ? p2 : A2 ^ 32767;
+        A2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 1 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 1 << 1) >> 1] | 0) | 0;
+        p2 = A2 >> 31;
+        e2 = c2 + 20 | 0;
+        b[e2 >> 1] = (A2 >> 15 | 0) == (p2 | 0) ? A2 : p2 ^ 32767;
+        p2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 2 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 2 << 1) >> 1] | 0) | 0;
+        A2 = p2 >> 31;
+        i2 = c2 + 22 | 0;
+        b[i2 >> 1] = (p2 >> 15 | 0) == (A2 | 0) ? p2 : A2 ^ 32767;
+        A2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 3 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 3 << 1) >> 1] | 0) | 0;
+        p2 = A2 >> 31;
+        j2 = c2 + 24 | 0;
+        b[j2 >> 1] = (A2 >> 15 | 0) == (p2 | 0) ? A2 : p2 ^ 32767;
+        p2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 4 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 4 << 1) >> 1] | 0) | 0;
+        A2 = p2 >> 31;
+        k2 = c2 + 26 | 0;
+        b[k2 >> 1] = (p2 >> 15 | 0) == (A2 | 0) ? p2 : A2 ^ 32767;
+        A2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 5 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 5 << 1) >> 1] | 0) | 0;
+        p2 = A2 >> 31;
+        n2 = c2 + 28 | 0;
+        b[n2 >> 1] = (A2 >> 15 | 0) == (p2 | 0) ? A2 : p2 ^ 32767;
+        z2 = (b[23172 + (((b[g2 >> 1] | 0) * 7 | 0) + 6 << 1) >> 1] | 0) + (b[14916 + (((b[z2 >> 1] | 0) * 7 | 0) + 6 << 1) >> 1] | 0) | 0;
+        g2 = z2 >> 31;
+        p2 = c2 + 30 | 0;
+        b[p2 >> 1] = (z2 >> 15 | 0) == (g2 | 0) ? z2 : g2 ^ 32767;
+        g2 = a2 + 4 | 0;
+        z2 = (b[20868 + ((b[g2 >> 1] | 0) * 5 << 1) >> 1] | 0) + (b[c2 >> 1] | 0) | 0;
+        A2 = z2 >> 31;
+        b[c2 >> 1] = (z2 >> 15 | 0) == (A2 | 0) ? z2 : A2 ^ 32767;
+        A2 = (b[20868 + (((b[g2 >> 1] | 0) * 5 | 0) + 1 << 1) >> 1] | 0) + (b[o2 >> 1] | 0) | 0;
+        z2 = A2 >> 31;
+        b[o2 >> 1] = (A2 >> 15 | 0) == (z2 | 0) ? A2 : z2 ^ 32767;
+        z2 = (b[20868 + (((b[g2 >> 1] | 0) * 5 | 0) + 2 << 1) >> 1] | 0) + (b[q2 >> 1] | 0) | 0;
+        A2 = z2 >> 31;
+        b[q2 >> 1] = (z2 >> 15 | 0) == (A2 | 0) ? z2 : A2 ^ 32767;
+        A2 = (b[20868 + (((b[g2 >> 1] | 0) * 5 | 0) + 3 << 1) >> 1] | 0) + (b[r2 >> 1] | 0) | 0;
+        z2 = A2 >> 31;
+        b[r2 >> 1] = (A2 >> 15 | 0) == (z2 | 0) ? A2 : z2 ^ 32767;
+        g2 = (b[20868 + (((b[g2 >> 1] | 0) * 5 | 0) + 4 << 1) >> 1] | 0) + (b[s2 >> 1] | 0) | 0;
+        z2 = g2 >> 31;
+        b[s2 >> 1] = (g2 >> 15 | 0) == (z2 | 0) ? g2 : z2 ^ 32767;
+        a2 = a2 + 6 | 0;
+        z2 = (b[22148 + (b[a2 >> 1] << 2 << 1) >> 1] | 0) + (b[t2 >> 1] | 0) | 0;
+        g2 = z2 >> 31;
+        b[t2 >> 1] = (z2 >> 15 | 0) == (g2 | 0) ? z2 : g2 ^ 32767;
+        g2 = (b[22148 + ((b[a2 >> 1] << 2 | 1) << 1) >> 1] | 0) + (b[u2 >> 1] | 0) | 0;
+        z2 = g2 >> 31;
+        b[u2 >> 1] = (g2 >> 15 | 0) == (z2 | 0) ? g2 : z2 ^ 32767;
+        z2 = (b[22148 + ((b[a2 >> 1] << 2 | 2) << 1) >> 1] | 0) + (b[v2 >> 1] | 0) | 0;
+        g2 = z2 >> 31;
+        b[v2 >> 1] = (z2 >> 15 | 0) == (g2 | 0) ? z2 : g2 ^ 32767;
+        a2 = (b[22148 + ((b[a2 >> 1] << 2 | 3) << 1) >> 1] | 0) + (b[w2 >> 1] | 0) | 0;
+        g2 = a2 >> 31;
+        b[w2 >> 1] = (a2 >> 15 | 0) == (g2 | 0) ? a2 : g2 ^ 32767;
+        g2 = 0;
+        do {
+          a2 = c2 + (g2 << 1) | 0;
+          z2 = b[a2 >> 1] | 0;
+          A2 = (b[10276 + (g2 << 1) >> 1] | 0) + (z2 << 16 >> 16) | 0;
+          C2 = A2 >> 31;
+          C2 = (A2 >> 15 | 0) == (C2 | 0) ? A2 : C2 ^ 32767;
+          b[a2 >> 1] = C2;
+          A2 = d2 + (g2 << 1) | 0;
+          D2 = (b[A2 >> 1] | 0) * 10923 | 0;
+          B2 = D2 >> 31;
+          C2 = (((D2 >> 30 | 0) == (B2 | 0) ? D2 >>> 15 : B2 ^ 32767) << 16 >> 16) + (C2 << 16 >> 16) | 0;
+          B2 = C2 >> 31;
+          b[a2 >> 1] = (C2 >> 15 | 0) == (B2 | 0) ? C2 : B2 ^ 32767;
+          b[A2 >> 1] = z2;
+          g2 = g2 + 1 | 0;
+        } while ((g2 | 0) != 16);
+        if (h2 << 16 >> 16) {
+          C2 = f2 + 32 | 0;
+          b[f2 + 64 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[f2 >> 1] | 0;
+          b[f2 >> 1] = b[c2 >> 1] | 0;
+          C2 = f2 + 34 | 0;
+          b[f2 + 66 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 2 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[o2 >> 1] | 0;
+          D2 = f2 + 36 | 0;
+          b[f2 + 68 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 4 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[q2 >> 1] | 0;
+          C2 = f2 + 38 | 0;
+          b[f2 + 70 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 6 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[r2 >> 1] | 0;
+          D2 = f2 + 40 | 0;
+          b[f2 + 72 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 8 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[s2 >> 1] | 0;
+          C2 = f2 + 42 | 0;
+          b[f2 + 74 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 10 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[t2 >> 1] | 0;
+          D2 = f2 + 44 | 0;
+          b[f2 + 76 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 12 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[u2 >> 1] | 0;
+          C2 = f2 + 46 | 0;
+          b[f2 + 78 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 14 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[v2 >> 1] | 0;
+          D2 = f2 + 48 | 0;
+          b[f2 + 80 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 16 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[w2 >> 1] | 0;
+          C2 = f2 + 50 | 0;
+          b[f2 + 82 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 18 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[x2 >> 1] | 0;
+          D2 = f2 + 52 | 0;
+          b[f2 + 84 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 20 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[e2 >> 1] | 0;
+          C2 = f2 + 54 | 0;
+          b[f2 + 86 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 22 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[i2 >> 1] | 0;
+          D2 = f2 + 56 | 0;
+          b[f2 + 88 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 24 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[j2 >> 1] | 0;
+          C2 = f2 + 58 | 0;
+          b[f2 + 90 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 26 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[k2 >> 1] | 0;
+          D2 = f2 + 60 | 0;
+          b[f2 + 92 >> 1] = b[D2 >> 1] | 0;
+          C2 = f2 + 28 | 0;
+          b[D2 >> 1] = b[C2 >> 1] | 0;
+          b[C2 >> 1] = b[n2 >> 1] | 0;
+          C2 = f2 + 62 | 0;
+          b[f2 + 94 >> 1] = b[C2 >> 1] | 0;
+          D2 = f2 + 30 | 0;
+          b[C2 >> 1] = b[D2 >> 1] | 0;
+          b[D2 >> 1] = b[p2 >> 1] | 0;
+        }
+      } else {
+        g2 = 0;
+        do {
+          D2 = b[10276 + (g2 << 1) >> 1] | 0;
+          C2 = D2 << 14;
+          A2 = b[f2 + (g2 << 1) >> 1] << 14;
+          B2 = A2 + C2 | 0;
+          B2 = (A2 ^ C2 | 0) > -1 & (B2 ^ C2 | 0) < 0 ? D2 >> 17 ^ 2147483647 : B2;
+          D2 = b[f2 + (g2 + 16 << 1) >> 1] << 14;
+          C2 = D2 + B2 | 0;
+          C2 = (D2 ^ B2 | 0) > -1 & (C2 ^ B2 | 0) < 0 ? B2 >> 31 ^ 2147483647 : C2;
+          B2 = b[f2 + (g2 + 32 << 1) >> 1] << 14;
+          D2 = B2 + C2 | 0;
+          D2 = (B2 ^ C2 | 0) > -1 & (D2 ^ C2 | 0) < 0 ? C2 >> 31 ^ 2147483647 : D2;
+          b[i2 + (g2 << 1) >> 1] = (D2 | 0) == 2147483647 ? 32767 : (D2 + 32768 | 0) >>> 16 & 65535;
+          g2 = g2 + 1 | 0;
+        } while ((g2 | 0) != 16);
+        g2 = 0;
+        do {
+          D2 = (b[e2 + (g2 << 1) >> 1] | 0) * 29491 | 0;
+          C2 = D2 >> 31;
+          A2 = (b[i2 + (g2 << 1) >> 1] | 0) * 3277 | 0;
+          B2 = A2 >> 31;
+          C2 = (((A2 >> 30 | 0) == (B2 | 0) ? A2 >>> 15 : B2 ^ 32767) << 16 >> 16) + (((D2 >> 30 | 0) == (C2 | 0) ? D2 >>> 15 : C2 ^ 32767) << 16 >> 16) | 0;
+          D2 = C2 >> 31;
+          b[c2 + (g2 << 1) >> 1] = (C2 >> 15 | 0) == (D2 | 0) ? C2 : D2 ^ 32767;
+          g2 = g2 + 1 | 0;
+        } while ((g2 | 0) != 16);
+        g2 = 0;
+        do {
+          D2 = d2 + (g2 << 1) | 0;
+          B2 = (b[D2 >> 1] | 0) * 10923 | 0;
+          C2 = B2 >> 31;
+          C2 = (((B2 >> 30 | 0) == (C2 | 0) ? B2 >>> 15 : C2 ^ 32767) << 16 >> 16) + (b[i2 + (g2 << 1) >> 1] | 0) | 0;
+          B2 = C2 >> 31;
+          B2 = (b[c2 + (g2 << 1) >> 1] | 0) - (((C2 >> 15 | 0) == (B2 | 0) ? C2 : B2 ^ 32767) << 16 >> 16) | 0;
+          C2 = B2 >> 31;
+          b[D2 >> 1] = (((B2 >> 15 | 0) == (C2 | 0) ? B2 : C2 ^ 32766) & 65535) << 16 >> 16 >> 1;
+          g2 = g2 + 1 | 0;
+        } while ((g2 | 0) != 16);
+      }
+      g2 = b[c2 >> 1] | 0;
+      if (g2 << 16 >> 16 < 128) {
+        b[c2 >> 1] = 128;
+        g2 = 128;
+      }
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 2 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 4 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 6 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 8 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 10 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 12 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 14 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 16 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 18 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 20 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 22 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 24 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      e2 = (g2 << 16 >> 16) + 128 | 0;
+      g2 = e2 >> 31;
+      g2 = ((e2 >> 15 | 0) == (g2 | 0) ? e2 : g2 ^ 32767) & 65535;
+      e2 = c2 + 26 | 0;
+      i2 = b[e2 >> 1] | 0;
+      if (i2 << 16 >> 16 < g2 << 16 >> 16)
+        b[e2 >> 1] = g2;
+      else
+        g2 = i2;
+      g2 = (g2 << 16 >> 16) + 128 | 0;
+      e2 = g2 >> 31;
+      e2 = ((g2 >> 15 | 0) == (e2 | 0) ? g2 : e2 ^ 32767) & 65535;
+      g2 = c2 + 28 | 0;
+      if ((b[g2 >> 1] | 0) >= e2 << 16 >> 16) {
+        l = y2;
+        return;
+      }
+      b[g2 >> 1] = e2;
+      l = y2;
+      return;
+    }
+    function Gb(a2, c2, d2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      if (d2 << 16 >> 16 > 0) {
+        if (c2 << 16 >> 16 <= 0)
+          return;
+        f2 = d2 << 16 >> 16;
+        c2 = c2 & 65535;
+        d2 = 0;
+        do {
+          g2 = a2 + (d2 << 1) | 0;
+          h2 = e[g2 >> 1] << 16;
+          i2 = h2 << f2;
+          h2 = (i2 >> f2 | 0) == (h2 | 0) ? i2 : h2 >> 31 ^ 2147483647;
+          b[g2 >> 1] = (h2 | 0) == 2147483647 ? 32767 : (h2 + 32768 | 0) >>> 16 & 65535;
+          d2 = d2 + 1 | 0;
+        } while ((d2 | 0) != (c2 | 0));
+        return;
+      }
+      if (d2 << 16 >> 16 >= 0)
+        return;
+      g2 = 0 - d2 & 15;
+      d2 = c2 << 16 >> 16 >> 1;
+      if (!(d2 << 16 >> 16))
+        return;
+      f2 = 32768 >>> (16 - g2 | 0) << 16 >> 16;
+      c2 = a2;
+      while (1) {
+        a2 = f2 + (b[c2 >> 1] | 0) | 0;
+        i2 = a2 >> 31;
+        b[c2 >> 1] = ((a2 >> 15 | 0) == (i2 | 0) ? a2 : i2 ^ 32767) << 16 >> 16 >> g2;
+        i2 = c2 + 2 | 0;
+        a2 = f2 + (b[i2 >> 1] | 0) | 0;
+        h2 = a2 >> 31;
+        b[i2 >> 1] = ((a2 >> 15 | 0) == (h2 | 0) ? a2 : h2 ^ 32767) << 16 >> 16 >> g2;
+        d2 = d2 + -1 << 16 >> 16;
+        if (!(d2 << 16 >> 16))
+          break;
+        else
+          c2 = c2 + 4 | 0;
+      }
+      return;
+    }
+    function Hb(d2, f2, g2, h2, i2, j2, k2, n2, o2, p2, q2) {
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      j2 = j2 | 0;
+      k2 = k2 | 0;
+      n2 = n2 | 0;
+      o2 = o2 | 0;
+      p2 = p2 | 0;
+      q2 = q2 | 0;
+      var r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0, E2 = 0;
+      E2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      A2 = E2 + 6 | 0;
+      z2 = E2 + 4 | 0;
+      C2 = E2;
+      r2 = q2 + 160 | 0;
+      B2 = q2 + 320 | 0;
+      s2 = q2 + 448 | 0;
+      D2 = q2 + 608 | 0;
+      u2 = o2 + 704 | 0;
+      w2 = q2;
+      x2 = u2;
+      y2 = w2 + 32 | 0;
+      do {
+        a[w2 >> 0] = a[x2 >> 0] | 0;
+        w2 = w2 + 1 | 0;
+        x2 = x2 + 1 | 0;
+      } while ((w2 | 0) < (y2 | 0));
+      v2 = o2 + 736 | 0;
+      w2 = r2;
+      x2 = v2;
+      y2 = w2 + 32 | 0;
+      do {
+        a[w2 >> 0] = a[x2 >> 0] | 0;
+        w2 = w2 + 1 | 0;
+        x2 = x2 + 1 | 0;
+      } while ((w2 | 0) < (y2 | 0));
+      r2 = q2 + 32 | 0;
+      t2 = q2 + 192 | 0;
+      Kb(d2, 16, f2, g2, r2, t2, 64);
+      w2 = u2;
+      x2 = q2 + 128 | 0;
+      y2 = w2 + 32 | 0;
+      do {
+        a[w2 >> 0] = a[x2 >> 0] | 0;
+        w2 = w2 + 1 | 0;
+        x2 = x2 + 1 | 0;
+      } while ((w2 | 0) < (y2 | 0));
+      w2 = v2;
+      x2 = q2 + 288 | 0;
+      y2 = w2 + 32 | 0;
+      do {
+        a[w2 >> 0] = a[x2 >> 0] | 0;
+        w2 = w2 + 1 | 0;
+        x2 = x2 + 1 | 0;
+      } while ((w2 | 0) < (y2 | 0));
+      Ia(r2, t2, B2, 22282, 64, o2 + 768 | 0);
+      Ta(B2, 64, o2 + 770 | 0);
+      ib(B2, 64, h2, o2 + 782 | 0, q2);
+      u2 = o2 + 1052 | 0;
+      r2 = 20;
+      t2 = s2;
+      while (1) {
+        b[t2 >> 1] = (fb(u2) | 0) << 16 >> 16 >> 3;
+        b[t2 + 2 >> 1] = (fb(u2) | 0) << 16 >> 16 >> 3;
+        b[t2 + 4 >> 1] = (fb(u2) | 0) << 16 >> 16 >> 3;
+        b[t2 + 6 >> 1] = (fb(u2) | 0) << 16 >> 16 >> 3;
+        r2 = r2 + -1 << 16 >> 16;
+        if (!(r2 << 16 >> 16))
+          break;
+        else
+          t2 = t2 + 8 | 0;
+      }
+      w2 = q2 + 650 | 0;
+      r2 = 16;
+      t2 = f2;
+      while (1) {
+        v2 = (b[t2 >> 1] | 0) + 4 | 0;
+        y2 = v2 >> 31;
+        b[t2 >> 1] = (((v2 >> 15 | 0) == (y2 | 0) ? v2 : y2 ^ 32760) & 65535) << 16 >> 16 >> 3;
+        y2 = t2 + 2 | 0;
+        v2 = (b[y2 >> 1] | 0) + 4 | 0;
+        x2 = v2 >> 31;
+        b[y2 >> 1] = (((v2 >> 15 | 0) == (x2 | 0) ? v2 : x2 ^ 32760) & 65535) << 16 >> 16 >> 3;
+        y2 = t2 + 4 | 0;
+        x2 = (b[y2 >> 1] | 0) + 4 | 0;
+        v2 = x2 >> 31;
+        b[y2 >> 1] = (((x2 >> 15 | 0) == (v2 | 0) ? x2 : v2 ^ 32760) & 65535) << 16 >> 16 >> 3;
+        y2 = t2 + 6 | 0;
+        v2 = (b[y2 >> 1] | 0) + 4 | 0;
+        x2 = v2 >> 31;
+        b[y2 >> 1] = (((v2 >> 15 | 0) == (x2 | 0) ? v2 : x2 ^ 32760) & 65535) << 16 >> 16 >> 3;
+        r2 = r2 + -1 << 16 >> 16;
+        if (!(r2 << 16 >> 16))
+          break;
+        else
+          t2 = t2 + 8 | 0;
+      }
+      t2 = yb(f2, f2, 64, z2) | 0;
+      b[z2 >> 1] = (e[z2 >> 1] | 0) - ((((g2 & 65535) << 16) + 2147287040 | 0) >>> 15);
+      r2 = yb(s2, s2, 80, A2) | 0;
+      if ((r2 >> 16 | 0) > (t2 >> 16 | 0)) {
+        b[A2 >> 1] = (e[A2 >> 1] | 0) + 1;
+        r2 = r2 >> 17;
+      } else
+        r2 = r2 >>> 16;
+      c[C2 >> 2] = ((ub(r2 & 65535, t2 >>> 16 & 65535) | 0) & 65535) << 16;
+      b[A2 >> 1] = (e[A2 >> 1] | 0) - (e[z2 >> 1] | 0);
+      wb(C2, A2);
+      r2 = c[C2 >> 2] | 0;
+      z2 = (e[A2 >> 1] | 0) + 1 | 0;
+      t2 = z2 << 16 >> 16;
+      if ((z2 & 65535) << 16 >> 16 > 0) {
+        z2 = r2 << t2;
+        r2 = (z2 >> t2 | 0) == (r2 | 0) ? z2 : r2 >> 31 ^ 2147483647;
+      } else
+        r2 = r2 >> (0 - t2 & 15);
+      c[C2 >> 2] = r2;
+      u2 = r2 >> 16;
+      r2 = 20;
+      t2 = s2;
+      while (1) {
+        b[t2 >> 1] = (N(u2, b[t2 >> 1] | 0) | 0) >>> 15;
+        z2 = t2 + 2 | 0;
+        b[z2 >> 1] = (N(u2, b[z2 >> 1] | 0) | 0) >>> 15;
+        z2 = t2 + 4 | 0;
+        b[z2 >> 1] = (N(u2, b[z2 >> 1] | 0) | 0) >>> 15;
+        z2 = t2 + 6 | 0;
+        b[z2 >> 1] = (N(u2, b[z2 >> 1] | 0) | 0) >>> 15;
+        r2 = r2 + -1 << 16 >> 16;
+        if (!(r2 << 16 >> 16))
+          break;
+        else
+          t2 = t2 + 8 | 0;
+      }
+      Ra(B2, 64, o2 + 1132 | 0);
+      t2 = b[B2 >> 1] | 0;
+      r2 = t2 << 16 >> 16;
+      r2 = N(r2, r2) | 0;
+      r2 = (r2 | 0) == 1073741824 ? -2147483648 : r2 << 1 | 1;
+      c[C2 >> 2] = r2;
+      v2 = 1;
+      u2 = 1;
+      do {
+        z2 = t2;
+        t2 = b[B2 + (u2 << 1) >> 1] | 0;
+        g2 = t2 << 16 >> 16;
+        y2 = N(g2, g2) | 0;
+        y2 = (y2 | 0) == 1073741824 ? 2147483647 : y2 << 1;
+        f2 = y2 + r2 | 0;
+        r2 = (y2 ^ r2 | 0) > -1 & (f2 ^ r2 | 0) < 0 ? r2 >> 31 ^ 2147483647 : f2;
+        g2 = N(z2 << 16 >> 16, g2) | 0;
+        g2 = (g2 | 0) == 1073741824 ? 2147483647 : g2 << 1;
+        z2 = g2 + v2 | 0;
+        v2 = (g2 ^ v2 | 0) > -1 & (z2 ^ v2 | 0) < 0 ? v2 >> 31 ^ 2147483647 : z2;
+        u2 = u2 + 1 | 0;
+      } while ((u2 | 0) != 64);
+      c[C2 >> 2] = r2;
+      t2 = gb(r2) | 0;
+      b[A2 >> 1] = t2;
+      t2 = t2 << 16 >> 16;
+      r2 = v2 << t2;
+      if ((r2 >> 16 | 0) > 0)
+        t2 = ub(r2 >>> 16 & 65535, c[C2 >> 2] << t2 >>> 16 & 65535) | 0;
+      else
+        t2 = 0;
+      u2 = (32767 - (t2 & 65535) << 16 >> 16) * 20480 | 0;
+      r2 = u2 >> 31;
+      r2 = (u2 >> 30 | 0) == (r2 | 0) ? u2 >>> 15 : r2 ^ 32767;
+      u2 = r2 << 16 >> 16;
+      if ((b[o2 + 1518 >> 1] | 0) > 0)
+        r2 = (((r2 << 17 >> 17 | 0) == (u2 | 0) ? r2 << 1 : u2 >>> 15 ^ 32767) << 16 >> 16) + -1 | 0;
+      else
+        r2 = (32767 - t2 & 65535) + 65535 | 0;
+      r2 = ((r2 & 65535 | 0) != 0 & 1) + (r2 & 65535) << 16 >> 16;
+      v2 = k2 << 16 >> 16 > 476;
+      if (v2 & p2 << 16 >> 16 == 0) {
+        u2 = b[24068 + (i2 << 16 >> 16 << 1) >> 1] | 0;
+        r2 = s2;
+        t2 = 20;
+        while (1) {
+          C2 = N(b[r2 >> 1] | 0, u2) | 0;
+          p2 = C2 >> 31;
+          b[r2 >> 1] = ((C2 >> 30 | 0) == (p2 | 0) ? C2 >>> 15 : p2 ^ 32767) << 1;
+          p2 = r2 + 2 | 0;
+          C2 = N(b[p2 >> 1] | 0, u2) | 0;
+          i2 = C2 >> 31;
+          b[p2 >> 1] = ((C2 >> 30 | 0) == (i2 | 0) ? C2 >>> 15 : i2 ^ 32767) << 1;
+          p2 = r2 + 4 | 0;
+          i2 = N(b[p2 >> 1] | 0, u2) | 0;
+          C2 = i2 >> 31;
+          b[p2 >> 1] = ((i2 >> 30 | 0) == (C2 | 0) ? i2 >>> 15 : C2 ^ 32767) << 1;
+          p2 = r2 + 6 | 0;
+          C2 = N(b[p2 >> 1] | 0, u2) | 0;
+          i2 = C2 >> 31;
+          b[p2 >> 1] = ((C2 >> 30 | 0) == (i2 | 0) ? C2 >>> 15 : i2 ^ 32767) << 1;
+          t2 = t2 + -1 << 16 >> 16;
+          if (!(t2 << 16 >> 16))
+            break;
+          else
+            r2 = r2 + 8 | 0;
+        }
+      } else {
+        u2 = (r2 << 16 >> 16 > 3277 ? r2 : 3277) & 65535;
+        r2 = s2;
+        t2 = 20;
+        while (1) {
+          C2 = N(b[r2 >> 1] | 0, u2) | 0;
+          p2 = C2 >> 31;
+          b[r2 >> 1] = (C2 >> 30 | 0) == (p2 | 0) ? C2 >>> 15 : p2 ^ 32767;
+          p2 = r2 + 2 | 0;
+          C2 = N(b[p2 >> 1] | 0, u2) | 0;
+          i2 = C2 >> 31;
+          b[p2 >> 1] = (C2 >> 30 | 0) == (i2 | 0) ? C2 >>> 15 : i2 ^ 32767;
+          p2 = r2 + 4 | 0;
+          i2 = N(b[p2 >> 1] | 0, u2) | 0;
+          C2 = i2 >> 31;
+          b[p2 >> 1] = (i2 >> 30 | 0) == (C2 | 0) ? i2 >>> 15 : C2 ^ 32767;
+          p2 = r2 + 6 | 0;
+          C2 = N(b[p2 >> 1] | 0, u2) | 0;
+          i2 = C2 >> 31;
+          b[p2 >> 1] = (C2 >> 30 | 0) == (i2 | 0) ? C2 >>> 15 : i2 ^ 32767;
+          t2 = t2 + -1 << 16 >> 16;
+          if (!(t2 << 16 >> 16))
+            break;
+          else
+            r2 = r2 + 8 | 0;
+        }
+      }
+      if (k2 << 16 >> 16 < 133 & n2 << 16 >> 16 == 0) {
+        Ya(j2);
+        Za(j2, w2, 20, 0);
+        Lb(w2, D2, 29491, 20);
+        Jb(D2, 20, s2, s2, 80, o2 + 830 | 0, 1, q2);
+      } else {
+        Lb(d2, D2, 19661, 16);
+        Jb(D2, 16, s2, s2, 80, o2 + 838 | 0, 1, q2);
+      }
+      xa(s2, 80, o2 + 870 | 0, q2);
+      if (v2) {
+        cb(s2, 80, o2 + 990 | 0, q2);
+        r2 = 40;
+      } else
+        r2 = 40;
+      while (1) {
+        k2 = (b[s2 >> 1] | 0) + (b[h2 >> 1] | 0) | 0;
+        o2 = k2 >> 31;
+        b[h2 >> 1] = (k2 >> 15 | 0) == (o2 | 0) ? k2 : o2 ^ 32767;
+        o2 = h2 + 2 | 0;
+        k2 = (b[s2 + 2 >> 1] | 0) + (b[o2 >> 1] | 0) | 0;
+        n2 = k2 >> 31;
+        b[o2 >> 1] = (k2 >> 15 | 0) == (n2 | 0) ? k2 : n2 ^ 32767;
+        r2 = r2 + -1 << 16 >> 16;
+        if (!(r2 << 16 >> 16))
+          break;
+        else {
+          s2 = s2 + 4 | 0;
+          h2 = h2 + 4 | 0;
+        }
+      }
+      l = E2;
+      return;
+    }
+    function Ib(a2, c2, d2, f2, g2, h2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      var i2 = 0, j2 = 0, k2 = 0, n2 = 0;
+      n2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      j2 = n2 + 2 | 0;
+      k2 = n2;
+      a2 = yb(a2, a2, h2, j2) | 0;
+      c2 = (b[j2 >> 1] | 0) - ((c2 & 65535) << 17 >> 16) | 0;
+      i2 = c2 >> 31;
+      b[j2 >> 1] = (c2 >> 15 | 0) == (i2 | 0) ? c2 : i2 ^ 32767;
+      i2 = d2 << 16 >> 16;
+      i2 = N(i2, i2) | 0;
+      i2 = (i2 | 0) == 1073741824 ? 2147483647 : i2 << 1;
+      d2 = (gb(i2) | 0) << 16 >> 16;
+      a2 = N(i2 << d2 >> 16, a2 >> 16) | 0;
+      i2 = a2 >> 31;
+      i2 = (a2 >> 30 | 0) == (i2 | 0) ? a2 >>> 15 : i2 ^ 32767;
+      b[j2 >> 1] = 65526 - d2 + (e[j2 >> 1] | 0);
+      d2 = yb(f2, f2, h2, k2) | 0;
+      a2 = g2 << 16 >> 16;
+      f2 = ((gb(a2) | 0) & 65535) + 65520 | 0;
+      c2 = f2 << 16 >> 16;
+      if ((f2 & 65535) << 16 >> 16 < 0)
+        a2 = a2 >> (0 - c2 & 15);
+      else {
+        h2 = c2 & 15;
+        g2 = a2 << h2;
+        a2 = (g2 << 16 >> 16 >> h2 | 0) == (a2 | 0) ? g2 : a2 >> 15 ^ 32767;
+      }
+      c2 = a2 << 16 >> 16;
+      c2 = N(c2, c2) | 0;
+      c2 = N((c2 & 1073741824 | 0) == 0 ? c2 << 1 >> 16 : 32767, d2 >> 16) | 0;
+      a2 = c2 >> 31;
+      a2 = (c2 >> 30 | 0) == (a2 | 0) ? c2 >>> 15 : a2 ^ 32767;
+      c2 = (e[k2 >> 1] | 0) - (f2 << 1) | 0;
+      b[k2 >> 1] = c2;
+      k2 = (e[j2 >> 1] | 0) - c2 << 16;
+      c2 = k2 >> 16;
+      if ((k2 | 0) > -65536) {
+        a2 = a2 << 16 >> 16 >> c2 + 1 & 65535;
+        c2 = i2 << 16 >> 17;
+      } else {
+        a2 = (a2 & 65535) << 16 >> 16 >> 1;
+        c2 = i2 << 16 >> 16 >> 1 - c2;
+      }
+      a2 = a2 << 16 >> 16;
+      d2 = c2 - a2 | 0;
+      f2 = d2 & 65535;
+      a2 = c2 + 1 + a2 & 65535;
+      if (!(d2 & 32768)) {
+        k2 = ub(f2, a2) | 0;
+        l = n2;
+        return k2 | 0;
+      } else {
+        k2 = ub(f2 << 16 >> 16 == -32768 ? 32767 : 0 - d2 & 65535, a2) | 0;
+        k2 = k2 << 16 >> 16 == -32768 ? 32767 : 0 - (k2 & 65535) & 65535;
+        l = n2;
+        return k2 | 0;
+      }
+    }
+    function Jb(a2, c2, d2, e2, f2, g2, h2, i2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      i2 = i2 | 0;
+      var j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0, z2 = 0, A2 = 0, B2 = 0, C2 = 0, D2 = 0;
+      z2 = c2 << 16 >> 16;
+      A2 = z2 << 1;
+      ec(i2 | 0, g2 | 0, A2 | 0) | 0;
+      y2 = i2 + (z2 << 1) | 0;
+      t2 = f2 << 16 >> 16;
+      u2 = t2 >> 2;
+      if ((u2 | 0) > 0) {
+        v2 = a2 + 6 | 0;
+        w2 = a2 + 4 | 0;
+        x2 = a2 + 2 | 0;
+        s2 = c2 << 16 >> 16 > 4;
+        r2 = 0;
+        i2 = 0;
+        do {
+          m2 = i2 << 2;
+          n2 = m2 | 1;
+          o2 = m2 | 2;
+          j2 = 0 - (b[d2 + (o2 << 1) >> 1] << 11) | 0;
+          p2 = m2 | 3;
+          i2 = 0 - (b[d2 + (p2 << 1) >> 1] << 11) | 0;
+          B2 = b[v2 >> 1] | 0;
+          l2 = (N(B2, b[y2 + (m2 + -3 << 1) >> 1] | 0) | 0) - (b[d2 + (m2 << 1) >> 1] << 11) | 0;
+          c2 = b[y2 + (m2 + -2 << 1) >> 1] | 0;
+          B2 = (N(c2, B2) | 0) - (b[d2 + (n2 << 1) >> 1] << 11) | 0;
+          k2 = b[w2 >> 1] | 0;
+          c2 = l2 + (N(k2, c2) | 0) | 0;
+          l2 = m2 + -1 | 0;
+          q2 = y2 + (l2 << 1) | 0;
+          f2 = b[q2 >> 1] | 0;
+          k2 = B2 + (N(f2, k2) | 0) | 0;
+          f2 = c2 + (N(b[x2 >> 1] | 0, f2) | 0) | 0;
+          if (s2) {
+            c2 = i2;
+            i2 = 4;
+            do {
+              D2 = b[a2 + (i2 + 1 << 1) >> 1] | 0;
+              C2 = (N(D2, b[y2 + (l2 - i2 << 1) >> 1] | 0) | 0) + f2 | 0;
+              f2 = b[y2 + (m2 - i2 << 1) >> 1] | 0;
+              k2 = (N(f2, D2) | 0) + k2 | 0;
+              B2 = b[a2 + (i2 << 1) >> 1] | 0;
+              f2 = C2 + (N(B2, f2) | 0) | 0;
+              C2 = b[y2 + (n2 - i2 << 1) >> 1] | 0;
+              k2 = k2 + (N(C2, B2) | 0) | 0;
+              C2 = (N(C2, D2) | 0) + j2 | 0;
+              j2 = b[y2 + (o2 - i2 << 1) >> 1] | 0;
+              c2 = (N(j2, D2) | 0) + c2 | 0;
+              j2 = C2 + (N(j2, B2) | 0) | 0;
+              c2 = c2 + (N(b[y2 + (p2 - i2 << 1) >> 1] | 0, B2) | 0) | 0;
+              i2 = (i2 << 16) + 131072 >> 16;
+            } while ((i2 | 0) < (z2 | 0));
+          } else {
+            c2 = i2;
+            i2 = 4;
+          }
+          D2 = b[a2 + (i2 << 1) >> 1] | 0;
+          C2 = (N(D2, b[y2 + (m2 - i2 << 1) >> 1] | 0) | 0) + f2 | 0;
+          B2 = (N(b[y2 + (n2 - i2 << 1) >> 1] | 0, D2) | 0) + k2 | 0;
+          l2 = (N(b[y2 + (o2 - i2 << 1) >> 1] | 0, D2) | 0) + j2 | 0;
+          D2 = (N(b[y2 + (p2 - i2 << 1) >> 1] | 0, D2) | 0) + c2 | 0;
+          i2 = C2 << 4;
+          C2 = (i2 >> 4 | 0) == (C2 | 0) ? i2 : C2 >> 31 ^ 2147483647;
+          C2 = (C2 | 0) == -2147483647 ? 32767 : (32768 - C2 | 0) >>> 16 & 65535;
+          i2 = y2 + (m2 << 1) | 0;
+          b[i2 >> 1] = C2;
+          b[e2 + (m2 << 1) >> 1] = C2;
+          B2 = B2 + (N(b[x2 >> 1] | 0, b[i2 >> 1] | 0) | 0) | 0;
+          C2 = B2 << 4;
+          B2 = (C2 >> 4 | 0) == (B2 | 0) ? C2 : B2 >> 31 ^ 2147483647;
+          B2 = (B2 | 0) == -2147483647 ? 32767 : (32768 - B2 | 0) >>> 16 & 65535;
+          C2 = y2 + (n2 << 1) | 0;
+          b[C2 >> 1] = B2;
+          b[e2 + (n2 << 1) >> 1] = B2;
+          B2 = b[v2 >> 1] | 0;
+          q2 = l2 + (N(B2, b[q2 >> 1] | 0) | 0) | 0;
+          i2 = b[i2 >> 1] | 0;
+          B2 = D2 + (N(i2, B2) | 0) | 0;
+          D2 = b[w2 >> 1] | 0;
+          i2 = q2 + (N(D2, i2) | 0) | 0;
+          C2 = b[C2 >> 1] | 0;
+          D2 = B2 + (N(C2, D2) | 0) | 0;
+          C2 = i2 + (N(b[x2 >> 1] | 0, C2) | 0) | 0;
+          i2 = C2 << 4;
+          C2 = (i2 >> 4 | 0) == (C2 | 0) ? i2 : C2 >> 31 ^ 2147483647;
+          C2 = (C2 | 0) == -2147483647 ? 32767 : (32768 - C2 | 0) >>> 16 & 65535;
+          i2 = y2 + (o2 << 1) | 0;
+          b[i2 >> 1] = C2;
+          b[e2 + (o2 << 1) >> 1] = C2;
+          i2 = D2 + (N(b[x2 >> 1] | 0, b[i2 >> 1] | 0) | 0) | 0;
+          D2 = i2 << 4;
+          i2 = (D2 >> 4 | 0) == (i2 | 0) ? D2 : i2 >> 31 ^ 2147483647;
+          i2 = (i2 | 0) == -2147483647 ? 32767 : (32768 - i2 | 0) >>> 16 & 65535;
+          b[y2 + (p2 << 1) >> 1] = i2;
+          b[e2 + (p2 << 1) >> 1] = i2;
+          r2 = r2 + 1 << 16 >> 16;
+          i2 = r2 << 16 >> 16;
+        } while ((u2 | 0) > (i2 | 0));
+      }
+      if (!(h2 << 16 >> 16))
+        return;
+      ec(g2 | 0, e2 + (t2 - z2 << 1) | 0, A2 | 0) | 0;
+      return;
+    }
+    function Kb(a2, c2, d2, e2, f2, g2, h2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      f2 = f2 | 0;
+      g2 = g2 | 0;
+      h2 = h2 | 0;
+      var i2 = 0, j2 = 0, k2 = 0, l2 = 0, m2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0;
+      s2 = h2 << 16 >> 16 >> 1;
+      if ((s2 | 0) <= 0)
+        return;
+      q2 = a2 + 2 | 0;
+      r2 = c2 << 16 >> 16;
+      p2 = c2 << 16 >> 16 > 2;
+      o2 = 9 - (e2 & 65535) << 16 >> 16;
+      n2 = 0;
+      h2 = 0;
+      do {
+        l2 = h2 << 1;
+        k2 = l2 + -1 | 0;
+        h2 = b[q2 >> 1] | 0;
+        c2 = N(h2, b[g2 + (k2 << 1) >> 1] | 0) | 0;
+        h2 = N(b[f2 + (k2 << 1) >> 1] | 0, h2) | 0;
+        m2 = l2 | 1;
+        if (p2) {
+          i2 = 0;
+          e2 = h2;
+          j2 = 0;
+          h2 = 2;
+          do {
+            v2 = k2 - h2 | 0;
+            u2 = b[a2 + (h2 + 1 << 1) >> 1] | 0;
+            c2 = (N(u2, b[g2 + (v2 << 1) >> 1] | 0) | 0) + c2 | 0;
+            e2 = (N(b[f2 + (v2 << 1) >> 1] | 0, u2) | 0) + e2 | 0;
+            v2 = l2 - h2 | 0;
+            w2 = b[g2 + (v2 << 1) >> 1] | 0;
+            t2 = b[a2 + (h2 << 1) >> 1] | 0;
+            c2 = c2 + (N(t2, w2) | 0) | 0;
+            v2 = b[f2 + (v2 << 1) >> 1] | 0;
+            e2 = e2 + (N(v2, t2) | 0) | 0;
+            i2 = (N(w2, u2) | 0) + i2 | 0;
+            u2 = (N(v2, u2) | 0) + j2 | 0;
+            j2 = m2 - h2 | 0;
+            i2 = i2 + (N(b[g2 + (j2 << 1) >> 1] | 0, t2) | 0) | 0;
+            j2 = u2 + (N(b[f2 + (j2 << 1) >> 1] | 0, t2) | 0) | 0;
+            h2 = (h2 << 16) + 131072 >> 16;
+          } while ((h2 | 0) < (r2 | 0));
+        } else {
+          j2 = 0;
+          i2 = 0;
+          e2 = h2;
+          h2 = 2;
+        }
+        u2 = l2 - h2 | 0;
+        w2 = b[a2 + (h2 << 1) >> 1] | 0;
+        t2 = 0 - (c2 + (N(w2, b[g2 + (u2 << 1) >> 1] | 0) | 0)) | 0;
+        h2 = m2 - h2 | 0;
+        v2 = i2 + (N(b[g2 + (h2 << 1) >> 1] | 0, w2) | 0) | 0;
+        u2 = (N(b[f2 + (u2 << 1) >> 1] | 0, w2) | 0) + e2 | 0;
+        w2 = (N(b[f2 + (h2 << 1) >> 1] | 0, w2) | 0) + j2 | 0;
+        u2 = (b[d2 + (l2 << 1) >> 1] << o2) + (t2 >> 11) - (u2 << 1) | 0;
+        h2 = u2 << 3;
+        u2 = (h2 >> 3 | 0) == (u2 | 0) ? h2 : u2 >> 31 ^ 2147483647;
+        h2 = u2 >> 16;
+        b[f2 + (l2 << 1) >> 1] = h2;
+        w2 = w2 + (N(h2, b[q2 >> 1] | 0) | 0) | 0;
+        h2 = (u2 >>> 4) - (h2 << 12) | 0;
+        b[g2 + (l2 << 1) >> 1] = h2;
+        h2 = 0 - (v2 + (N(h2 << 16 >> 16, b[q2 >> 1] | 0) | 0)) >> 11;
+        h2 = (b[d2 + (m2 << 1) >> 1] << o2) - (w2 << 1) + h2 | 0;
+        w2 = h2 << 3;
+        h2 = (w2 >> 3 | 0) == (h2 | 0) ? w2 : h2 >> 31 ^ 2147483647;
+        b[f2 + (m2 << 1) >> 1] = h2 >>> 16;
+        b[g2 + (m2 << 1) >> 1] = (h2 >>> 4) - (h2 >> 16 << 12);
+        n2 = n2 + 1 << 16 >> 16;
+        h2 = n2 << 16 >> 16;
+      } while ((s2 | 0) > (h2 | 0));
+      return;
+    }
+    function Lb(a2, c2, d2, e2) {
+      a2 = a2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0;
+      b[c2 >> 1] = b[a2 >> 1] | 0;
+      g2 = d2 << 16 >> 16;
+      b[c2 + 2 >> 1] = ((N(b[a2 + 2 >> 1] | 0, g2) | 0) + 16384 | 0) >>> 15;
+      if (e2 << 16 >> 16 <= 1)
+        return;
+      f2 = e2 & 65535;
+      d2 = g2;
+      e2 = 1;
+      do {
+        h2 = N(d2, g2) | 0;
+        e2 = e2 + 1 | 0;
+        d2 = (h2 << 1) + 32768 >> 16;
+        b[c2 + (e2 << 1) >> 1] = ((N(d2, b[a2 + (e2 << 1) >> 1] | 0) | 0) + 16384 | 0) >>> 15;
+      } while ((e2 | 0) != (f2 | 0));
+      return;
+    }
+    function Mb(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0, r2 = 0, s2 = 0, t2 = 0, u2 = 0, v2 = 0, w2 = 0, x2 = 0, y2 = 0;
+      y2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      q2 = y2;
+      do
+        if (a2 >>> 0 < 245) {
+          n2 = a2 >>> 0 < 11 ? 16 : a2 + 11 & -8;
+          a2 = n2 >>> 3;
+          p2 = c[6025] | 0;
+          d2 = p2 >>> a2;
+          if (d2 & 3 | 0) {
+            b2 = (d2 & 1 ^ 1) + a2 | 0;
+            a2 = 24140 + (b2 << 1 << 2) | 0;
+            d2 = a2 + 8 | 0;
+            e2 = c[d2 >> 2] | 0;
+            f2 = e2 + 8 | 0;
+            g2 = c[f2 >> 2] | 0;
+            if ((g2 | 0) == (a2 | 0))
+              c[6025] = p2 & ~(1 << b2);
+            else {
+              c[g2 + 12 >> 2] = a2;
+              c[d2 >> 2] = g2;
+            }
+            x2 = b2 << 3;
+            c[e2 + 4 >> 2] = x2 | 3;
+            x2 = e2 + x2 + 4 | 0;
+            c[x2 >> 2] = c[x2 >> 2] | 1;
+            x2 = f2;
+            l = y2;
+            return x2 | 0;
+          }
+          o2 = c[6027] | 0;
+          if (n2 >>> 0 > o2 >>> 0) {
+            if (d2 | 0) {
+              b2 = 2 << a2;
+              b2 = d2 << a2 & (b2 | 0 - b2);
+              b2 = (b2 & 0 - b2) + -1 | 0;
+              i2 = b2 >>> 12 & 16;
+              b2 = b2 >>> i2;
+              d2 = b2 >>> 5 & 8;
+              b2 = b2 >>> d2;
+              g2 = b2 >>> 2 & 4;
+              b2 = b2 >>> g2;
+              a2 = b2 >>> 1 & 2;
+              b2 = b2 >>> a2;
+              e2 = b2 >>> 1 & 1;
+              e2 = (d2 | i2 | g2 | a2 | e2) + (b2 >>> e2) | 0;
+              b2 = 24140 + (e2 << 1 << 2) | 0;
+              a2 = b2 + 8 | 0;
+              g2 = c[a2 >> 2] | 0;
+              i2 = g2 + 8 | 0;
+              d2 = c[i2 >> 2] | 0;
+              if ((d2 | 0) == (b2 | 0)) {
+                a2 = p2 & ~(1 << e2);
+                c[6025] = a2;
+              } else {
+                c[d2 + 12 >> 2] = b2;
+                c[a2 >> 2] = d2;
+                a2 = p2;
+              }
+              x2 = e2 << 3;
+              h2 = x2 - n2 | 0;
+              c[g2 + 4 >> 2] = n2 | 3;
+              f2 = g2 + n2 | 0;
+              c[f2 + 4 >> 2] = h2 | 1;
+              c[g2 + x2 >> 2] = h2;
+              if (o2 | 0) {
+                e2 = c[6030] | 0;
+                b2 = o2 >>> 3;
+                d2 = 24140 + (b2 << 1 << 2) | 0;
+                b2 = 1 << b2;
+                if (!(a2 & b2)) {
+                  c[6025] = a2 | b2;
+                  b2 = d2;
+                  a2 = d2 + 8 | 0;
+                } else {
+                  a2 = d2 + 8 | 0;
+                  b2 = c[a2 >> 2] | 0;
+                }
+                c[a2 >> 2] = e2;
+                c[b2 + 12 >> 2] = e2;
+                c[e2 + 8 >> 2] = b2;
+                c[e2 + 12 >> 2] = d2;
+              }
+              c[6027] = h2;
+              c[6030] = f2;
+              x2 = i2;
+              l = y2;
+              return x2 | 0;
+            }
+            j2 = c[6026] | 0;
+            if (j2) {
+              d2 = (j2 & 0 - j2) + -1 | 0;
+              i2 = d2 >>> 12 & 16;
+              d2 = d2 >>> i2;
+              h2 = d2 >>> 5 & 8;
+              d2 = d2 >>> h2;
+              k2 = d2 >>> 2 & 4;
+              d2 = d2 >>> k2;
+              e2 = d2 >>> 1 & 2;
+              d2 = d2 >>> e2;
+              a2 = d2 >>> 1 & 1;
+              a2 = c[24404 + ((h2 | i2 | k2 | e2 | a2) + (d2 >>> a2) << 2) >> 2] | 0;
+              d2 = (c[a2 + 4 >> 2] & -8) - n2 | 0;
+              e2 = c[a2 + 16 + (((c[a2 + 16 >> 2] | 0) == 0 & 1) << 2) >> 2] | 0;
+              if (!e2) {
+                k2 = a2;
+                h2 = d2;
+              } else {
+                do {
+                  i2 = (c[e2 + 4 >> 2] & -8) - n2 | 0;
+                  k2 = i2 >>> 0 < d2 >>> 0;
+                  d2 = k2 ? i2 : d2;
+                  a2 = k2 ? e2 : a2;
+                  e2 = c[e2 + 16 + (((c[e2 + 16 >> 2] | 0) == 0 & 1) << 2) >> 2] | 0;
+                } while ((e2 | 0) != 0);
+                k2 = a2;
+                h2 = d2;
+              }
+              i2 = k2 + n2 | 0;
+              if (i2 >>> 0 > k2 >>> 0) {
+                f2 = c[k2 + 24 >> 2] | 0;
+                b2 = c[k2 + 12 >> 2] | 0;
+                do
+                  if ((b2 | 0) == (k2 | 0)) {
+                    a2 = k2 + 20 | 0;
+                    b2 = c[a2 >> 2] | 0;
+                    if (!b2) {
+                      a2 = k2 + 16 | 0;
+                      b2 = c[a2 >> 2] | 0;
+                      if (!b2) {
+                        d2 = 0;
+                        break;
+                      }
+                    }
+                    while (1) {
+                      d2 = b2 + 20 | 0;
+                      e2 = c[d2 >> 2] | 0;
+                      if (e2 | 0) {
+                        b2 = e2;
+                        a2 = d2;
+                        continue;
+                      }
+                      d2 = b2 + 16 | 0;
+                      e2 = c[d2 >> 2] | 0;
+                      if (!e2)
+                        break;
+                      else {
+                        b2 = e2;
+                        a2 = d2;
+                      }
+                    }
+                    c[a2 >> 2] = 0;
+                    d2 = b2;
+                  } else {
+                    d2 = c[k2 + 8 >> 2] | 0;
+                    c[d2 + 12 >> 2] = b2;
+                    c[b2 + 8 >> 2] = d2;
+                    d2 = b2;
+                  }
+                while (0);
+                do
+                  if (f2 | 0) {
+                    b2 = c[k2 + 28 >> 2] | 0;
+                    a2 = 24404 + (b2 << 2) | 0;
+                    if ((k2 | 0) == (c[a2 >> 2] | 0)) {
+                      c[a2 >> 2] = d2;
+                      if (!d2) {
+                        c[6026] = j2 & ~(1 << b2);
+                        break;
+                      }
+                    } else {
+                      c[f2 + 16 + (((c[f2 + 16 >> 2] | 0) != (k2 | 0) & 1) << 2) >> 2] = d2;
+                      if (!d2)
+                        break;
+                    }
+                    c[d2 + 24 >> 2] = f2;
+                    b2 = c[k2 + 16 >> 2] | 0;
+                    if (b2 | 0) {
+                      c[d2 + 16 >> 2] = b2;
+                      c[b2 + 24 >> 2] = d2;
+                    }
+                    b2 = c[k2 + 20 >> 2] | 0;
+                    if (b2 | 0) {
+                      c[d2 + 20 >> 2] = b2;
+                      c[b2 + 24 >> 2] = d2;
+                    }
+                  }
+                while (0);
+                if (h2 >>> 0 < 16) {
+                  x2 = h2 + n2 | 0;
+                  c[k2 + 4 >> 2] = x2 | 3;
+                  x2 = k2 + x2 + 4 | 0;
+                  c[x2 >> 2] = c[x2 >> 2] | 1;
+                } else {
+                  c[k2 + 4 >> 2] = n2 | 3;
+                  c[i2 + 4 >> 2] = h2 | 1;
+                  c[i2 + h2 >> 2] = h2;
+                  if (o2 | 0) {
+                    e2 = c[6030] | 0;
+                    b2 = o2 >>> 3;
+                    d2 = 24140 + (b2 << 1 << 2) | 0;
+                    b2 = 1 << b2;
+                    if (!(p2 & b2)) {
+                      c[6025] = p2 | b2;
+                      b2 = d2;
+                      a2 = d2 + 8 | 0;
+                    } else {
+                      a2 = d2 + 8 | 0;
+                      b2 = c[a2 >> 2] | 0;
+                    }
+                    c[a2 >> 2] = e2;
+                    c[b2 + 12 >> 2] = e2;
+                    c[e2 + 8 >> 2] = b2;
+                    c[e2 + 12 >> 2] = d2;
+                  }
+                  c[6027] = h2;
+                  c[6030] = i2;
+                }
+                x2 = k2 + 8 | 0;
+                l = y2;
+                return x2 | 0;
+              } else
+                o2 = n2;
+            } else
+              o2 = n2;
+          } else
+            o2 = n2;
+        } else if (a2 >>> 0 <= 4294967231) {
+          a2 = a2 + 11 | 0;
+          n2 = a2 & -8;
+          k2 = c[6026] | 0;
+          if (k2) {
+            e2 = 0 - n2 | 0;
+            a2 = a2 >>> 8;
+            if (a2)
+              if (n2 >>> 0 > 16777215)
+                j2 = 31;
+              else {
+                p2 = (a2 + 1048320 | 0) >>> 16 & 8;
+                w2 = a2 << p2;
+                o2 = (w2 + 520192 | 0) >>> 16 & 4;
+                w2 = w2 << o2;
+                j2 = (w2 + 245760 | 0) >>> 16 & 2;
+                j2 = 14 - (o2 | p2 | j2) + (w2 << j2 >>> 15) | 0;
+                j2 = n2 >>> (j2 + 7 | 0) & 1 | j2 << 1;
+              }
+            else
+              j2 = 0;
+            d2 = c[24404 + (j2 << 2) >> 2] | 0;
+            a:
+              do
+                if (!d2) {
+                  d2 = 0;
+                  a2 = 0;
+                  w2 = 57;
+                } else {
+                  a2 = 0;
+                  i2 = d2;
+                  h2 = n2 << ((j2 | 0) == 31 ? 0 : 25 - (j2 >>> 1) | 0);
+                  d2 = 0;
+                  while (1) {
+                    f2 = (c[i2 + 4 >> 2] & -8) - n2 | 0;
+                    if (f2 >>> 0 < e2 >>> 0)
+                      if (!f2) {
+                        e2 = 0;
+                        d2 = i2;
+                        a2 = i2;
+                        w2 = 61;
+                        break a;
+                      } else {
+                        a2 = i2;
+                        e2 = f2;
+                      }
+                    f2 = c[i2 + 20 >> 2] | 0;
+                    i2 = c[i2 + 16 + (h2 >>> 31 << 2) >> 2] | 0;
+                    d2 = (f2 | 0) == 0 | (f2 | 0) == (i2 | 0) ? d2 : f2;
+                    f2 = (i2 | 0) == 0;
+                    if (f2) {
+                      w2 = 57;
+                      break;
+                    } else
+                      h2 = h2 << ((f2 ^ 1) & 1);
+                  }
+                }
+              while (0);
+            if ((w2 | 0) == 57) {
+              if ((d2 | 0) == 0 & (a2 | 0) == 0) {
+                a2 = 2 << j2;
+                a2 = k2 & (a2 | 0 - a2);
+                if (!a2) {
+                  o2 = n2;
+                  break;
+                }
+                p2 = (a2 & 0 - a2) + -1 | 0;
+                i2 = p2 >>> 12 & 16;
+                p2 = p2 >>> i2;
+                h2 = p2 >>> 5 & 8;
+                p2 = p2 >>> h2;
+                j2 = p2 >>> 2 & 4;
+                p2 = p2 >>> j2;
+                o2 = p2 >>> 1 & 2;
+                p2 = p2 >>> o2;
+                d2 = p2 >>> 1 & 1;
+                a2 = 0;
+                d2 = c[24404 + ((h2 | i2 | j2 | o2 | d2) + (p2 >>> d2) << 2) >> 2] | 0;
+              }
+              if (!d2) {
+                i2 = a2;
+                h2 = e2;
+              } else
+                w2 = 61;
+            }
+            if ((w2 | 0) == 61)
+              while (1) {
+                w2 = 0;
+                o2 = (c[d2 + 4 >> 2] & -8) - n2 | 0;
+                p2 = o2 >>> 0 < e2 >>> 0;
+                e2 = p2 ? o2 : e2;
+                a2 = p2 ? d2 : a2;
+                d2 = c[d2 + 16 + (((c[d2 + 16 >> 2] | 0) == 0 & 1) << 2) >> 2] | 0;
+                if (!d2) {
+                  i2 = a2;
+                  h2 = e2;
+                  break;
+                } else
+                  w2 = 61;
+              }
+            if ((i2 | 0) != 0 ? h2 >>> 0 < ((c[6027] | 0) - n2 | 0) >>> 0 : 0) {
+              g2 = i2 + n2 | 0;
+              if (g2 >>> 0 <= i2 >>> 0) {
+                x2 = 0;
+                l = y2;
+                return x2 | 0;
+              }
+              f2 = c[i2 + 24 >> 2] | 0;
+              b2 = c[i2 + 12 >> 2] | 0;
+              do
+                if ((b2 | 0) == (i2 | 0)) {
+                  a2 = i2 + 20 | 0;
+                  b2 = c[a2 >> 2] | 0;
+                  if (!b2) {
+                    a2 = i2 + 16 | 0;
+                    b2 = c[a2 >> 2] | 0;
+                    if (!b2) {
+                      b2 = 0;
+                      break;
+                    }
+                  }
+                  while (1) {
+                    d2 = b2 + 20 | 0;
+                    e2 = c[d2 >> 2] | 0;
+                    if (e2 | 0) {
+                      b2 = e2;
+                      a2 = d2;
+                      continue;
+                    }
+                    d2 = b2 + 16 | 0;
+                    e2 = c[d2 >> 2] | 0;
+                    if (!e2)
+                      break;
+                    else {
+                      b2 = e2;
+                      a2 = d2;
+                    }
+                  }
+                  c[a2 >> 2] = 0;
+                } else {
+                  x2 = c[i2 + 8 >> 2] | 0;
+                  c[x2 + 12 >> 2] = b2;
+                  c[b2 + 8 >> 2] = x2;
+                }
+              while (0);
+              do
+                if (f2) {
+                  a2 = c[i2 + 28 >> 2] | 0;
+                  d2 = 24404 + (a2 << 2) | 0;
+                  if ((i2 | 0) == (c[d2 >> 2] | 0)) {
+                    c[d2 >> 2] = b2;
+                    if (!b2) {
+                      e2 = k2 & ~(1 << a2);
+                      c[6026] = e2;
+                      break;
+                    }
+                  } else {
+                    c[f2 + 16 + (((c[f2 + 16 >> 2] | 0) != (i2 | 0) & 1) << 2) >> 2] = b2;
+                    if (!b2) {
+                      e2 = k2;
+                      break;
+                    }
+                  }
+                  c[b2 + 24 >> 2] = f2;
+                  a2 = c[i2 + 16 >> 2] | 0;
+                  if (a2 | 0) {
+                    c[b2 + 16 >> 2] = a2;
+                    c[a2 + 24 >> 2] = b2;
+                  }
+                  a2 = c[i2 + 20 >> 2] | 0;
+                  if (a2) {
+                    c[b2 + 20 >> 2] = a2;
+                    c[a2 + 24 >> 2] = b2;
+                    e2 = k2;
+                  } else
+                    e2 = k2;
+                } else
+                  e2 = k2;
+              while (0);
+              do
+                if (h2 >>> 0 >= 16) {
+                  c[i2 + 4 >> 2] = n2 | 3;
+                  c[g2 + 4 >> 2] = h2 | 1;
+                  c[g2 + h2 >> 2] = h2;
+                  b2 = h2 >>> 3;
+                  if (h2 >>> 0 < 256) {
+                    d2 = 24140 + (b2 << 1 << 2) | 0;
+                    a2 = c[6025] | 0;
+                    b2 = 1 << b2;
+                    if (!(a2 & b2)) {
+                      c[6025] = a2 | b2;
+                      b2 = d2;
+                      a2 = d2 + 8 | 0;
+                    } else {
+                      a2 = d2 + 8 | 0;
+                      b2 = c[a2 >> 2] | 0;
+                    }
+                    c[a2 >> 2] = g2;
+                    c[b2 + 12 >> 2] = g2;
+                    c[g2 + 8 >> 2] = b2;
+                    c[g2 + 12 >> 2] = d2;
+                    break;
+                  }
+                  b2 = h2 >>> 8;
+                  if (b2)
+                    if (h2 >>> 0 > 16777215)
+                      b2 = 31;
+                    else {
+                      w2 = (b2 + 1048320 | 0) >>> 16 & 8;
+                      x2 = b2 << w2;
+                      v2 = (x2 + 520192 | 0) >>> 16 & 4;
+                      x2 = x2 << v2;
+                      b2 = (x2 + 245760 | 0) >>> 16 & 2;
+                      b2 = 14 - (v2 | w2 | b2) + (x2 << b2 >>> 15) | 0;
+                      b2 = h2 >>> (b2 + 7 | 0) & 1 | b2 << 1;
+                    }
+                  else
+                    b2 = 0;
+                  d2 = 24404 + (b2 << 2) | 0;
+                  c[g2 + 28 >> 2] = b2;
+                  a2 = g2 + 16 | 0;
+                  c[a2 + 4 >> 2] = 0;
+                  c[a2 >> 2] = 0;
+                  a2 = 1 << b2;
+                  if (!(e2 & a2)) {
+                    c[6026] = e2 | a2;
+                    c[d2 >> 2] = g2;
+                    c[g2 + 24 >> 2] = d2;
+                    c[g2 + 12 >> 2] = g2;
+                    c[g2 + 8 >> 2] = g2;
+                    break;
+                  }
+                  a2 = h2 << ((b2 | 0) == 31 ? 0 : 25 - (b2 >>> 1) | 0);
+                  d2 = c[d2 >> 2] | 0;
+                  while (1) {
+                    if ((c[d2 + 4 >> 2] & -8 | 0) == (h2 | 0)) {
+                      w2 = 97;
+                      break;
+                    }
+                    e2 = d2 + 16 + (a2 >>> 31 << 2) | 0;
+                    b2 = c[e2 >> 2] | 0;
+                    if (!b2) {
+                      w2 = 96;
+                      break;
+                    } else {
+                      a2 = a2 << 1;
+                      d2 = b2;
+                    }
+                  }
+                  if ((w2 | 0) == 96) {
+                    c[e2 >> 2] = g2;
+                    c[g2 + 24 >> 2] = d2;
+                    c[g2 + 12 >> 2] = g2;
+                    c[g2 + 8 >> 2] = g2;
+                    break;
+                  } else if ((w2 | 0) == 97) {
+                    w2 = d2 + 8 | 0;
+                    x2 = c[w2 >> 2] | 0;
+                    c[x2 + 12 >> 2] = g2;
+                    c[w2 >> 2] = g2;
+                    c[g2 + 8 >> 2] = x2;
+                    c[g2 + 12 >> 2] = d2;
+                    c[g2 + 24 >> 2] = 0;
+                    break;
+                  }
+                } else {
+                  x2 = h2 + n2 | 0;
+                  c[i2 + 4 >> 2] = x2 | 3;
+                  x2 = i2 + x2 + 4 | 0;
+                  c[x2 >> 2] = c[x2 >> 2] | 1;
+                }
+              while (0);
+              x2 = i2 + 8 | 0;
+              l = y2;
+              return x2 | 0;
+            } else
+              o2 = n2;
+          } else
+            o2 = n2;
+        } else
+          o2 = -1;
+      while (0);
+      d2 = c[6027] | 0;
+      if (d2 >>> 0 >= o2 >>> 0) {
+        b2 = d2 - o2 | 0;
+        a2 = c[6030] | 0;
+        if (b2 >>> 0 > 15) {
+          x2 = a2 + o2 | 0;
+          c[6030] = x2;
+          c[6027] = b2;
+          c[x2 + 4 >> 2] = b2 | 1;
+          c[a2 + d2 >> 2] = b2;
+          c[a2 + 4 >> 2] = o2 | 3;
+        } else {
+          c[6027] = 0;
+          c[6030] = 0;
+          c[a2 + 4 >> 2] = d2 | 3;
+          x2 = a2 + d2 + 4 | 0;
+          c[x2 >> 2] = c[x2 >> 2] | 1;
+        }
+        x2 = a2 + 8 | 0;
+        l = y2;
+        return x2 | 0;
+      }
+      i2 = c[6028] | 0;
+      if (i2 >>> 0 > o2 >>> 0) {
+        v2 = i2 - o2 | 0;
+        c[6028] = v2;
+        x2 = c[6031] | 0;
+        w2 = x2 + o2 | 0;
+        c[6031] = w2;
+        c[w2 + 4 >> 2] = v2 | 1;
+        c[x2 + 4 >> 2] = o2 | 3;
+        x2 = x2 + 8 | 0;
+        l = y2;
+        return x2 | 0;
+      }
+      if (!(c[6143] | 0)) {
+        c[6145] = 4096;
+        c[6144] = 4096;
+        c[6146] = -1;
+        c[6147] = -1;
+        c[6148] = 0;
+        c[6136] = 0;
+        c[6143] = q2 & -16 ^ 1431655768;
+        a2 = 4096;
+      } else
+        a2 = c[6145] | 0;
+      j2 = o2 + 48 | 0;
+      k2 = o2 + 47 | 0;
+      h2 = a2 + k2 | 0;
+      f2 = 0 - a2 | 0;
+      n2 = h2 & f2;
+      if (n2 >>> 0 <= o2 >>> 0) {
+        x2 = 0;
+        l = y2;
+        return x2 | 0;
+      }
+      a2 = c[6135] | 0;
+      if (a2 | 0 ? (p2 = c[6133] | 0, q2 = p2 + n2 | 0, q2 >>> 0 <= p2 >>> 0 | q2 >>> 0 > a2 >>> 0) : 0) {
+        x2 = 0;
+        l = y2;
+        return x2 | 0;
+      }
+      b:
+        do
+          if (!(c[6136] & 4)) {
+            d2 = c[6031] | 0;
+            c:
+              do
+                if (d2) {
+                  e2 = 24548;
+                  while (1) {
+                    a2 = c[e2 >> 2] | 0;
+                    if (a2 >>> 0 <= d2 >>> 0 ? (t2 = e2 + 4 | 0, (a2 + (c[t2 >> 2] | 0) | 0) >>> 0 > d2 >>> 0) : 0)
+                      break;
+                    a2 = c[e2 + 8 >> 2] | 0;
+                    if (!a2) {
+                      w2 = 118;
+                      break c;
+                    } else
+                      e2 = a2;
+                  }
+                  b2 = h2 - i2 & f2;
+                  if (b2 >>> 0 < 2147483647) {
+                    a2 = gc(b2 | 0) | 0;
+                    if ((a2 | 0) == ((c[e2 >> 2] | 0) + (c[t2 >> 2] | 0) | 0)) {
+                      if ((a2 | 0) != (-1 | 0)) {
+                        h2 = b2;
+                        g2 = a2;
+                        w2 = 135;
+                        break b;
+                      }
+                    } else {
+                      e2 = a2;
+                      w2 = 126;
+                    }
+                  } else
+                    b2 = 0;
+                } else
+                  w2 = 118;
+              while (0);
+            do
+              if ((w2 | 0) == 118) {
+                d2 = gc(0) | 0;
+                if ((d2 | 0) != (-1 | 0) ? (b2 = d2, r2 = c[6144] | 0, s2 = r2 + -1 | 0, b2 = ((s2 & b2 | 0) == 0 ? 0 : (s2 + b2 & 0 - r2) - b2 | 0) + n2 | 0, r2 = c[6133] | 0, s2 = b2 + r2 | 0, b2 >>> 0 > o2 >>> 0 & b2 >>> 0 < 2147483647) : 0) {
+                  t2 = c[6135] | 0;
+                  if (t2 | 0 ? s2 >>> 0 <= r2 >>> 0 | s2 >>> 0 > t2 >>> 0 : 0) {
+                    b2 = 0;
+                    break;
+                  }
+                  a2 = gc(b2 | 0) | 0;
+                  if ((a2 | 0) == (d2 | 0)) {
+                    h2 = b2;
+                    g2 = d2;
+                    w2 = 135;
+                    break b;
+                  } else {
+                    e2 = a2;
+                    w2 = 126;
+                  }
+                } else
+                  b2 = 0;
+              }
+            while (0);
+            do
+              if ((w2 | 0) == 126) {
+                d2 = 0 - b2 | 0;
+                if (!(j2 >>> 0 > b2 >>> 0 & (b2 >>> 0 < 2147483647 & (e2 | 0) != (-1 | 0))))
+                  if ((e2 | 0) == (-1 | 0)) {
+                    b2 = 0;
+                    break;
+                  } else {
+                    h2 = b2;
+                    g2 = e2;
+                    w2 = 135;
+                    break b;
+                  }
+                a2 = c[6145] | 0;
+                a2 = k2 - b2 + a2 & 0 - a2;
+                if (a2 >>> 0 >= 2147483647) {
+                  h2 = b2;
+                  g2 = e2;
+                  w2 = 135;
+                  break b;
+                }
+                if ((gc(a2 | 0) | 0) == (-1 | 0)) {
+                  gc(d2 | 0) | 0;
+                  b2 = 0;
+                  break;
+                } else {
+                  h2 = a2 + b2 | 0;
+                  g2 = e2;
+                  w2 = 135;
+                  break b;
+                }
+              }
+            while (0);
+            c[6136] = c[6136] | 4;
+            w2 = 133;
+          } else {
+            b2 = 0;
+            w2 = 133;
+          }
+        while (0);
+      if (((w2 | 0) == 133 ? n2 >>> 0 < 2147483647 : 0) ? (g2 = gc(n2 | 0) | 0, t2 = gc(0) | 0, u2 = t2 - g2 | 0, v2 = u2 >>> 0 > (o2 + 40 | 0) >>> 0, !((g2 | 0) == (-1 | 0) | v2 ^ 1 | g2 >>> 0 < t2 >>> 0 & ((g2 | 0) != (-1 | 0) & (t2 | 0) != (-1 | 0)) ^ 1)) : 0) {
+        h2 = v2 ? u2 : b2;
+        w2 = 135;
+      }
+      if ((w2 | 0) == 135) {
+        b2 = (c[6133] | 0) + h2 | 0;
+        c[6133] = b2;
+        if (b2 >>> 0 > (c[6134] | 0) >>> 0)
+          c[6134] = b2;
+        j2 = c[6031] | 0;
+        do
+          if (j2) {
+            b2 = 24548;
+            while (1) {
+              a2 = c[b2 >> 2] | 0;
+              d2 = b2 + 4 | 0;
+              e2 = c[d2 >> 2] | 0;
+              if ((g2 | 0) == (a2 + e2 | 0)) {
+                w2 = 143;
+                break;
+              }
+              f2 = c[b2 + 8 >> 2] | 0;
+              if (!f2)
+                break;
+              else
+                b2 = f2;
+            }
+            if (((w2 | 0) == 143 ? (c[b2 + 12 >> 2] & 8 | 0) == 0 : 0) ? g2 >>> 0 > j2 >>> 0 & a2 >>> 0 <= j2 >>> 0 : 0) {
+              c[d2 >> 2] = e2 + h2;
+              x2 = (c[6028] | 0) + h2 | 0;
+              v2 = j2 + 8 | 0;
+              v2 = (v2 & 7 | 0) == 0 ? 0 : 0 - v2 & 7;
+              w2 = j2 + v2 | 0;
+              v2 = x2 - v2 | 0;
+              c[6031] = w2;
+              c[6028] = v2;
+              c[w2 + 4 >> 2] = v2 | 1;
+              c[j2 + x2 + 4 >> 2] = 40;
+              c[6032] = c[6147];
+              break;
+            }
+            if (g2 >>> 0 < (c[6029] | 0) >>> 0)
+              c[6029] = g2;
+            a2 = g2 + h2 | 0;
+            b2 = 24548;
+            while (1) {
+              if ((c[b2 >> 2] | 0) == (a2 | 0)) {
+                w2 = 151;
+                break;
+              }
+              b2 = c[b2 + 8 >> 2] | 0;
+              if (!b2) {
+                a2 = 24548;
+                break;
+              }
+            }
+            if ((w2 | 0) == 151)
+              if (!(c[b2 + 12 >> 2] & 8)) {
+                c[b2 >> 2] = g2;
+                n2 = b2 + 4 | 0;
+                c[n2 >> 2] = (c[n2 >> 2] | 0) + h2;
+                n2 = g2 + 8 | 0;
+                n2 = g2 + ((n2 & 7 | 0) == 0 ? 0 : 0 - n2 & 7) | 0;
+                b2 = a2 + 8 | 0;
+                b2 = a2 + ((b2 & 7 | 0) == 0 ? 0 : 0 - b2 & 7) | 0;
+                k2 = n2 + o2 | 0;
+                i2 = b2 - n2 - o2 | 0;
+                c[n2 + 4 >> 2] = o2 | 3;
+                do
+                  if ((j2 | 0) != (b2 | 0)) {
+                    if ((c[6030] | 0) == (b2 | 0)) {
+                      x2 = (c[6027] | 0) + i2 | 0;
+                      c[6027] = x2;
+                      c[6030] = k2;
+                      c[k2 + 4 >> 2] = x2 | 1;
+                      c[k2 + x2 >> 2] = x2;
+                      break;
+                    }
+                    a2 = c[b2 + 4 >> 2] | 0;
+                    if ((a2 & 3 | 0) == 1) {
+                      h2 = a2 & -8;
+                      e2 = a2 >>> 3;
+                      d:
+                        do
+                          if (a2 >>> 0 < 256) {
+                            a2 = c[b2 + 8 >> 2] | 0;
+                            d2 = c[b2 + 12 >> 2] | 0;
+                            if ((d2 | 0) == (a2 | 0)) {
+                              c[6025] = c[6025] & ~(1 << e2);
+                              break;
+                            } else {
+                              c[a2 + 12 >> 2] = d2;
+                              c[d2 + 8 >> 2] = a2;
+                              break;
+                            }
+                          } else {
+                            g2 = c[b2 + 24 >> 2] | 0;
+                            a2 = c[b2 + 12 >> 2] | 0;
+                            do
+                              if ((a2 | 0) == (b2 | 0)) {
+                                e2 = b2 + 16 | 0;
+                                d2 = e2 + 4 | 0;
+                                a2 = c[d2 >> 2] | 0;
+                                if (!a2) {
+                                  a2 = c[e2 >> 2] | 0;
+                                  if (!a2) {
+                                    a2 = 0;
+                                    break;
+                                  } else
+                                    d2 = e2;
+                                }
+                                while (1) {
+                                  e2 = a2 + 20 | 0;
+                                  f2 = c[e2 >> 2] | 0;
+                                  if (f2 | 0) {
+                                    a2 = f2;
+                                    d2 = e2;
+                                    continue;
+                                  }
+                                  e2 = a2 + 16 | 0;
+                                  f2 = c[e2 >> 2] | 0;
+                                  if (!f2)
+                                    break;
+                                  else {
+                                    a2 = f2;
+                                    d2 = e2;
+                                  }
+                                }
+                                c[d2 >> 2] = 0;
+                              } else {
+                                x2 = c[b2 + 8 >> 2] | 0;
+                                c[x2 + 12 >> 2] = a2;
+                                c[a2 + 8 >> 2] = x2;
+                              }
+                            while (0);
+                            if (!g2)
+                              break;
+                            d2 = c[b2 + 28 >> 2] | 0;
+                            e2 = 24404 + (d2 << 2) | 0;
+                            do
+                              if ((c[e2 >> 2] | 0) != (b2 | 0)) {
+                                c[g2 + 16 + (((c[g2 + 16 >> 2] | 0) != (b2 | 0) & 1) << 2) >> 2] = a2;
+                                if (!a2)
+                                  break d;
+                              } else {
+                                c[e2 >> 2] = a2;
+                                if (a2 | 0)
+                                  break;
+                                c[6026] = c[6026] & ~(1 << d2);
+                                break d;
+                              }
+                            while (0);
+                            c[a2 + 24 >> 2] = g2;
+                            d2 = b2 + 16 | 0;
+                            e2 = c[d2 >> 2] | 0;
+                            if (e2 | 0) {
+                              c[a2 + 16 >> 2] = e2;
+                              c[e2 + 24 >> 2] = a2;
+                            }
+                            d2 = c[d2 + 4 >> 2] | 0;
+                            if (!d2)
+                              break;
+                            c[a2 + 20 >> 2] = d2;
+                            c[d2 + 24 >> 2] = a2;
+                          }
+                        while (0);
+                      b2 = b2 + h2 | 0;
+                      f2 = h2 + i2 | 0;
+                    } else
+                      f2 = i2;
+                    b2 = b2 + 4 | 0;
+                    c[b2 >> 2] = c[b2 >> 2] & -2;
+                    c[k2 + 4 >> 2] = f2 | 1;
+                    c[k2 + f2 >> 2] = f2;
+                    b2 = f2 >>> 3;
+                    if (f2 >>> 0 < 256) {
+                      d2 = 24140 + (b2 << 1 << 2) | 0;
+                      a2 = c[6025] | 0;
+                      b2 = 1 << b2;
+                      if (!(a2 & b2)) {
+                        c[6025] = a2 | b2;
+                        b2 = d2;
+                        a2 = d2 + 8 | 0;
+                      } else {
+                        a2 = d2 + 8 | 0;
+                        b2 = c[a2 >> 2] | 0;
+                      }
+                      c[a2 >> 2] = k2;
+                      c[b2 + 12 >> 2] = k2;
+                      c[k2 + 8 >> 2] = b2;
+                      c[k2 + 12 >> 2] = d2;
+                      break;
+                    }
+                    b2 = f2 >>> 8;
+                    do
+                      if (!b2)
+                        b2 = 0;
+                      else {
+                        if (f2 >>> 0 > 16777215) {
+                          b2 = 31;
+                          break;
+                        }
+                        w2 = (b2 + 1048320 | 0) >>> 16 & 8;
+                        x2 = b2 << w2;
+                        v2 = (x2 + 520192 | 0) >>> 16 & 4;
+                        x2 = x2 << v2;
+                        b2 = (x2 + 245760 | 0) >>> 16 & 2;
+                        b2 = 14 - (v2 | w2 | b2) + (x2 << b2 >>> 15) | 0;
+                        b2 = f2 >>> (b2 + 7 | 0) & 1 | b2 << 1;
+                      }
+                    while (0);
+                    e2 = 24404 + (b2 << 2) | 0;
+                    c[k2 + 28 >> 2] = b2;
+                    a2 = k2 + 16 | 0;
+                    c[a2 + 4 >> 2] = 0;
+                    c[a2 >> 2] = 0;
+                    a2 = c[6026] | 0;
+                    d2 = 1 << b2;
+                    if (!(a2 & d2)) {
+                      c[6026] = a2 | d2;
+                      c[e2 >> 2] = k2;
+                      c[k2 + 24 >> 2] = e2;
+                      c[k2 + 12 >> 2] = k2;
+                      c[k2 + 8 >> 2] = k2;
+                      break;
+                    }
+                    a2 = f2 << ((b2 | 0) == 31 ? 0 : 25 - (b2 >>> 1) | 0);
+                    d2 = c[e2 >> 2] | 0;
+                    while (1) {
+                      if ((c[d2 + 4 >> 2] & -8 | 0) == (f2 | 0)) {
+                        w2 = 192;
+                        break;
+                      }
+                      e2 = d2 + 16 + (a2 >>> 31 << 2) | 0;
+                      b2 = c[e2 >> 2] | 0;
+                      if (!b2) {
+                        w2 = 191;
+                        break;
+                      } else {
+                        a2 = a2 << 1;
+                        d2 = b2;
+                      }
+                    }
+                    if ((w2 | 0) == 191) {
+                      c[e2 >> 2] = k2;
+                      c[k2 + 24 >> 2] = d2;
+                      c[k2 + 12 >> 2] = k2;
+                      c[k2 + 8 >> 2] = k2;
+                      break;
+                    } else if ((w2 | 0) == 192) {
+                      w2 = d2 + 8 | 0;
+                      x2 = c[w2 >> 2] | 0;
+                      c[x2 + 12 >> 2] = k2;
+                      c[w2 >> 2] = k2;
+                      c[k2 + 8 >> 2] = x2;
+                      c[k2 + 12 >> 2] = d2;
+                      c[k2 + 24 >> 2] = 0;
+                      break;
+                    }
+                  } else {
+                    x2 = (c[6028] | 0) + i2 | 0;
+                    c[6028] = x2;
+                    c[6031] = k2;
+                    c[k2 + 4 >> 2] = x2 | 1;
+                  }
+                while (0);
+                x2 = n2 + 8 | 0;
+                l = y2;
+                return x2 | 0;
+              } else
+                a2 = 24548;
+            while (1) {
+              b2 = c[a2 >> 2] | 0;
+              if (b2 >>> 0 <= j2 >>> 0 ? (x2 = b2 + (c[a2 + 4 >> 2] | 0) | 0, x2 >>> 0 > j2 >>> 0) : 0)
+                break;
+              a2 = c[a2 + 8 >> 2] | 0;
+            }
+            f2 = x2 + -47 | 0;
+            a2 = f2 + 8 | 0;
+            a2 = f2 + ((a2 & 7 | 0) == 0 ? 0 : 0 - a2 & 7) | 0;
+            f2 = j2 + 16 | 0;
+            a2 = a2 >>> 0 < f2 >>> 0 ? j2 : a2;
+            b2 = a2 + 8 | 0;
+            d2 = h2 + -40 | 0;
+            v2 = g2 + 8 | 0;
+            v2 = (v2 & 7 | 0) == 0 ? 0 : 0 - v2 & 7;
+            w2 = g2 + v2 | 0;
+            v2 = d2 - v2 | 0;
+            c[6031] = w2;
+            c[6028] = v2;
+            c[w2 + 4 >> 2] = v2 | 1;
+            c[g2 + d2 + 4 >> 2] = 40;
+            c[6032] = c[6147];
+            d2 = a2 + 4 | 0;
+            c[d2 >> 2] = 27;
+            c[b2 >> 2] = c[6137];
+            c[b2 + 4 >> 2] = c[6138];
+            c[b2 + 8 >> 2] = c[6139];
+            c[b2 + 12 >> 2] = c[6140];
+            c[6137] = g2;
+            c[6138] = h2;
+            c[6140] = 0;
+            c[6139] = b2;
+            b2 = a2 + 24 | 0;
+            do {
+              w2 = b2;
+              b2 = b2 + 4 | 0;
+              c[b2 >> 2] = 7;
+            } while ((w2 + 8 | 0) >>> 0 < x2 >>> 0);
+            if ((a2 | 0) != (j2 | 0)) {
+              g2 = a2 - j2 | 0;
+              c[d2 >> 2] = c[d2 >> 2] & -2;
+              c[j2 + 4 >> 2] = g2 | 1;
+              c[a2 >> 2] = g2;
+              b2 = g2 >>> 3;
+              if (g2 >>> 0 < 256) {
+                d2 = 24140 + (b2 << 1 << 2) | 0;
+                a2 = c[6025] | 0;
+                b2 = 1 << b2;
+                if (!(a2 & b2)) {
+                  c[6025] = a2 | b2;
+                  b2 = d2;
+                  a2 = d2 + 8 | 0;
+                } else {
+                  a2 = d2 + 8 | 0;
+                  b2 = c[a2 >> 2] | 0;
+                }
+                c[a2 >> 2] = j2;
+                c[b2 + 12 >> 2] = j2;
+                c[j2 + 8 >> 2] = b2;
+                c[j2 + 12 >> 2] = d2;
+                break;
+              }
+              b2 = g2 >>> 8;
+              if (b2)
+                if (g2 >>> 0 > 16777215)
+                  d2 = 31;
+                else {
+                  w2 = (b2 + 1048320 | 0) >>> 16 & 8;
+                  x2 = b2 << w2;
+                  v2 = (x2 + 520192 | 0) >>> 16 & 4;
+                  x2 = x2 << v2;
+                  d2 = (x2 + 245760 | 0) >>> 16 & 2;
+                  d2 = 14 - (v2 | w2 | d2) + (x2 << d2 >>> 15) | 0;
+                  d2 = g2 >>> (d2 + 7 | 0) & 1 | d2 << 1;
+                }
+              else
+                d2 = 0;
+              e2 = 24404 + (d2 << 2) | 0;
+              c[j2 + 28 >> 2] = d2;
+              c[j2 + 20 >> 2] = 0;
+              c[f2 >> 2] = 0;
+              b2 = c[6026] | 0;
+              a2 = 1 << d2;
+              if (!(b2 & a2)) {
+                c[6026] = b2 | a2;
+                c[e2 >> 2] = j2;
+                c[j2 + 24 >> 2] = e2;
+                c[j2 + 12 >> 2] = j2;
+                c[j2 + 8 >> 2] = j2;
+                break;
+              }
+              a2 = g2 << ((d2 | 0) == 31 ? 0 : 25 - (d2 >>> 1) | 0);
+              d2 = c[e2 >> 2] | 0;
+              while (1) {
+                if ((c[d2 + 4 >> 2] & -8 | 0) == (g2 | 0)) {
+                  w2 = 213;
+                  break;
+                }
+                e2 = d2 + 16 + (a2 >>> 31 << 2) | 0;
+                b2 = c[e2 >> 2] | 0;
+                if (!b2) {
+                  w2 = 212;
+                  break;
+                } else {
+                  a2 = a2 << 1;
+                  d2 = b2;
+                }
+              }
+              if ((w2 | 0) == 212) {
+                c[e2 >> 2] = j2;
+                c[j2 + 24 >> 2] = d2;
+                c[j2 + 12 >> 2] = j2;
+                c[j2 + 8 >> 2] = j2;
+                break;
+              } else if ((w2 | 0) == 213) {
+                w2 = d2 + 8 | 0;
+                x2 = c[w2 >> 2] | 0;
+                c[x2 + 12 >> 2] = j2;
+                c[w2 >> 2] = j2;
+                c[j2 + 8 >> 2] = x2;
+                c[j2 + 12 >> 2] = d2;
+                c[j2 + 24 >> 2] = 0;
+                break;
+              }
+            }
+          } else {
+            x2 = c[6029] | 0;
+            if ((x2 | 0) == 0 | g2 >>> 0 < x2 >>> 0)
+              c[6029] = g2;
+            c[6137] = g2;
+            c[6138] = h2;
+            c[6140] = 0;
+            c[6034] = c[6143];
+            c[6033] = -1;
+            c[6038] = 24140;
+            c[6037] = 24140;
+            c[6040] = 24148;
+            c[6039] = 24148;
+            c[6042] = 24156;
+            c[6041] = 24156;
+            c[6044] = 24164;
+            c[6043] = 24164;
+            c[6046] = 24172;
+            c[6045] = 24172;
+            c[6048] = 24180;
+            c[6047] = 24180;
+            c[6050] = 24188;
+            c[6049] = 24188;
+            c[6052] = 24196;
+            c[6051] = 24196;
+            c[6054] = 24204;
+            c[6053] = 24204;
+            c[6056] = 24212;
+            c[6055] = 24212;
+            c[6058] = 24220;
+            c[6057] = 24220;
+            c[6060] = 24228;
+            c[6059] = 24228;
+            c[6062] = 24236;
+            c[6061] = 24236;
+            c[6064] = 24244;
+            c[6063] = 24244;
+            c[6066] = 24252;
+            c[6065] = 24252;
+            c[6068] = 24260;
+            c[6067] = 24260;
+            c[6070] = 24268;
+            c[6069] = 24268;
+            c[6072] = 24276;
+            c[6071] = 24276;
+            c[6074] = 24284;
+            c[6073] = 24284;
+            c[6076] = 24292;
+            c[6075] = 24292;
+            c[6078] = 24300;
+            c[6077] = 24300;
+            c[6080] = 24308;
+            c[6079] = 24308;
+            c[6082] = 24316;
+            c[6081] = 24316;
+            c[6084] = 24324;
+            c[6083] = 24324;
+            c[6086] = 24332;
+            c[6085] = 24332;
+            c[6088] = 24340;
+            c[6087] = 24340;
+            c[6090] = 24348;
+            c[6089] = 24348;
+            c[6092] = 24356;
+            c[6091] = 24356;
+            c[6094] = 24364;
+            c[6093] = 24364;
+            c[6096] = 24372;
+            c[6095] = 24372;
+            c[6098] = 24380;
+            c[6097] = 24380;
+            c[6100] = 24388;
+            c[6099] = 24388;
+            x2 = h2 + -40 | 0;
+            v2 = g2 + 8 | 0;
+            v2 = (v2 & 7 | 0) == 0 ? 0 : 0 - v2 & 7;
+            w2 = g2 + v2 | 0;
+            v2 = x2 - v2 | 0;
+            c[6031] = w2;
+            c[6028] = v2;
+            c[w2 + 4 >> 2] = v2 | 1;
+            c[g2 + x2 + 4 >> 2] = 40;
+            c[6032] = c[6147];
+          }
+        while (0);
+        b2 = c[6028] | 0;
+        if (b2 >>> 0 > o2 >>> 0) {
+          v2 = b2 - o2 | 0;
+          c[6028] = v2;
+          x2 = c[6031] | 0;
+          w2 = x2 + o2 | 0;
+          c[6031] = w2;
+          c[w2 + 4 >> 2] = v2 | 1;
+          c[x2 + 4 >> 2] = o2 | 3;
+          x2 = x2 + 8 | 0;
+          l = y2;
+          return x2 | 0;
+        }
+      }
+      c[(Rb() | 0) >> 2] = 12;
+      x2 = 0;
+      l = y2;
+      return x2 | 0;
+    }
+    function Nb(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0;
+      if (!a2)
+        return;
+      d2 = a2 + -8 | 0;
+      f2 = c[6029] | 0;
+      a2 = c[a2 + -4 >> 2] | 0;
+      b2 = a2 & -8;
+      j2 = d2 + b2 | 0;
+      do
+        if (!(a2 & 1)) {
+          e2 = c[d2 >> 2] | 0;
+          if (!(a2 & 3))
+            return;
+          h2 = d2 + (0 - e2) | 0;
+          g2 = e2 + b2 | 0;
+          if (h2 >>> 0 < f2 >>> 0)
+            return;
+          if ((c[6030] | 0) == (h2 | 0)) {
+            a2 = j2 + 4 | 0;
+            b2 = c[a2 >> 2] | 0;
+            if ((b2 & 3 | 0) != 3) {
+              i2 = h2;
+              b2 = g2;
+              break;
+            }
+            c[6027] = g2;
+            c[a2 >> 2] = b2 & -2;
+            c[h2 + 4 >> 2] = g2 | 1;
+            c[h2 + g2 >> 2] = g2;
+            return;
+          }
+          d2 = e2 >>> 3;
+          if (e2 >>> 0 < 256) {
+            a2 = c[h2 + 8 >> 2] | 0;
+            b2 = c[h2 + 12 >> 2] | 0;
+            if ((b2 | 0) == (a2 | 0)) {
+              c[6025] = c[6025] & ~(1 << d2);
+              i2 = h2;
+              b2 = g2;
+              break;
+            } else {
+              c[a2 + 12 >> 2] = b2;
+              c[b2 + 8 >> 2] = a2;
+              i2 = h2;
+              b2 = g2;
+              break;
+            }
+          }
+          f2 = c[h2 + 24 >> 2] | 0;
+          a2 = c[h2 + 12 >> 2] | 0;
+          do
+            if ((a2 | 0) == (h2 | 0)) {
+              d2 = h2 + 16 | 0;
+              b2 = d2 + 4 | 0;
+              a2 = c[b2 >> 2] | 0;
+              if (!a2) {
+                a2 = c[d2 >> 2] | 0;
+                if (!a2) {
+                  a2 = 0;
+                  break;
+                } else
+                  b2 = d2;
+              }
+              while (1) {
+                d2 = a2 + 20 | 0;
+                e2 = c[d2 >> 2] | 0;
+                if (e2 | 0) {
+                  a2 = e2;
+                  b2 = d2;
+                  continue;
+                }
+                d2 = a2 + 16 | 0;
+                e2 = c[d2 >> 2] | 0;
+                if (!e2)
+                  break;
+                else {
+                  a2 = e2;
+                  b2 = d2;
+                }
+              }
+              c[b2 >> 2] = 0;
+            } else {
+              i2 = c[h2 + 8 >> 2] | 0;
+              c[i2 + 12 >> 2] = a2;
+              c[a2 + 8 >> 2] = i2;
+            }
+          while (0);
+          if (f2) {
+            b2 = c[h2 + 28 >> 2] | 0;
+            d2 = 24404 + (b2 << 2) | 0;
+            if ((c[d2 >> 2] | 0) == (h2 | 0)) {
+              c[d2 >> 2] = a2;
+              if (!a2) {
+                c[6026] = c[6026] & ~(1 << b2);
+                i2 = h2;
+                b2 = g2;
+                break;
+              }
+            } else {
+              c[f2 + 16 + (((c[f2 + 16 >> 2] | 0) != (h2 | 0) & 1) << 2) >> 2] = a2;
+              if (!a2) {
+                i2 = h2;
+                b2 = g2;
+                break;
+              }
+            }
+            c[a2 + 24 >> 2] = f2;
+            b2 = h2 + 16 | 0;
+            d2 = c[b2 >> 2] | 0;
+            if (d2 | 0) {
+              c[a2 + 16 >> 2] = d2;
+              c[d2 + 24 >> 2] = a2;
+            }
+            b2 = c[b2 + 4 >> 2] | 0;
+            if (b2) {
+              c[a2 + 20 >> 2] = b2;
+              c[b2 + 24 >> 2] = a2;
+              i2 = h2;
+              b2 = g2;
+            } else {
+              i2 = h2;
+              b2 = g2;
+            }
+          } else {
+            i2 = h2;
+            b2 = g2;
+          }
+        } else {
+          i2 = d2;
+          h2 = d2;
+        }
+      while (0);
+      if (h2 >>> 0 >= j2 >>> 0)
+        return;
+      a2 = j2 + 4 | 0;
+      e2 = c[a2 >> 2] | 0;
+      if (!(e2 & 1))
+        return;
+      if (!(e2 & 2)) {
+        if ((c[6031] | 0) == (j2 | 0)) {
+          j2 = (c[6028] | 0) + b2 | 0;
+          c[6028] = j2;
+          c[6031] = i2;
+          c[i2 + 4 >> 2] = j2 | 1;
+          if ((i2 | 0) != (c[6030] | 0))
+            return;
+          c[6030] = 0;
+          c[6027] = 0;
+          return;
+        }
+        if ((c[6030] | 0) == (j2 | 0)) {
+          j2 = (c[6027] | 0) + b2 | 0;
+          c[6027] = j2;
+          c[6030] = h2;
+          c[i2 + 4 >> 2] = j2 | 1;
+          c[h2 + j2 >> 2] = j2;
+          return;
+        }
+        f2 = (e2 & -8) + b2 | 0;
+        d2 = e2 >>> 3;
+        do
+          if (e2 >>> 0 < 256) {
+            b2 = c[j2 + 8 >> 2] | 0;
+            a2 = c[j2 + 12 >> 2] | 0;
+            if ((a2 | 0) == (b2 | 0)) {
+              c[6025] = c[6025] & ~(1 << d2);
+              break;
+            } else {
+              c[b2 + 12 >> 2] = a2;
+              c[a2 + 8 >> 2] = b2;
+              break;
+            }
+          } else {
+            g2 = c[j2 + 24 >> 2] | 0;
+            a2 = c[j2 + 12 >> 2] | 0;
+            do
+              if ((a2 | 0) == (j2 | 0)) {
+                d2 = j2 + 16 | 0;
+                b2 = d2 + 4 | 0;
+                a2 = c[b2 >> 2] | 0;
+                if (!a2) {
+                  a2 = c[d2 >> 2] | 0;
+                  if (!a2) {
+                    d2 = 0;
+                    break;
+                  } else
+                    b2 = d2;
+                }
+                while (1) {
+                  d2 = a2 + 20 | 0;
+                  e2 = c[d2 >> 2] | 0;
+                  if (e2 | 0) {
+                    a2 = e2;
+                    b2 = d2;
+                    continue;
+                  }
+                  d2 = a2 + 16 | 0;
+                  e2 = c[d2 >> 2] | 0;
+                  if (!e2)
+                    break;
+                  else {
+                    a2 = e2;
+                    b2 = d2;
+                  }
+                }
+                c[b2 >> 2] = 0;
+                d2 = a2;
+              } else {
+                d2 = c[j2 + 8 >> 2] | 0;
+                c[d2 + 12 >> 2] = a2;
+                c[a2 + 8 >> 2] = d2;
+                d2 = a2;
+              }
+            while (0);
+            if (g2 | 0) {
+              a2 = c[j2 + 28 >> 2] | 0;
+              b2 = 24404 + (a2 << 2) | 0;
+              if ((c[b2 >> 2] | 0) == (j2 | 0)) {
+                c[b2 >> 2] = d2;
+                if (!d2) {
+                  c[6026] = c[6026] & ~(1 << a2);
+                  break;
+                }
+              } else {
+                c[g2 + 16 + (((c[g2 + 16 >> 2] | 0) != (j2 | 0) & 1) << 2) >> 2] = d2;
+                if (!d2)
+                  break;
+              }
+              c[d2 + 24 >> 2] = g2;
+              a2 = j2 + 16 | 0;
+              b2 = c[a2 >> 2] | 0;
+              if (b2 | 0) {
+                c[d2 + 16 >> 2] = b2;
+                c[b2 + 24 >> 2] = d2;
+              }
+              a2 = c[a2 + 4 >> 2] | 0;
+              if (a2 | 0) {
+                c[d2 + 20 >> 2] = a2;
+                c[a2 + 24 >> 2] = d2;
+              }
+            }
+          }
+        while (0);
+        c[i2 + 4 >> 2] = f2 | 1;
+        c[h2 + f2 >> 2] = f2;
+        if ((i2 | 0) == (c[6030] | 0)) {
+          c[6027] = f2;
+          return;
+        }
+      } else {
+        c[a2 >> 2] = e2 & -2;
+        c[i2 + 4 >> 2] = b2 | 1;
+        c[h2 + b2 >> 2] = b2;
+        f2 = b2;
+      }
+      a2 = f2 >>> 3;
+      if (f2 >>> 0 < 256) {
+        d2 = 24140 + (a2 << 1 << 2) | 0;
+        b2 = c[6025] | 0;
+        a2 = 1 << a2;
+        if (!(b2 & a2)) {
+          c[6025] = b2 | a2;
+          a2 = d2;
+          b2 = d2 + 8 | 0;
+        } else {
+          b2 = d2 + 8 | 0;
+          a2 = c[b2 >> 2] | 0;
+        }
+        c[b2 >> 2] = i2;
+        c[a2 + 12 >> 2] = i2;
+        c[i2 + 8 >> 2] = a2;
+        c[i2 + 12 >> 2] = d2;
+        return;
+      }
+      a2 = f2 >>> 8;
+      if (a2)
+        if (f2 >>> 0 > 16777215)
+          a2 = 31;
+        else {
+          h2 = (a2 + 1048320 | 0) >>> 16 & 8;
+          j2 = a2 << h2;
+          g2 = (j2 + 520192 | 0) >>> 16 & 4;
+          j2 = j2 << g2;
+          a2 = (j2 + 245760 | 0) >>> 16 & 2;
+          a2 = 14 - (g2 | h2 | a2) + (j2 << a2 >>> 15) | 0;
+          a2 = f2 >>> (a2 + 7 | 0) & 1 | a2 << 1;
+        }
+      else
+        a2 = 0;
+      e2 = 24404 + (a2 << 2) | 0;
+      c[i2 + 28 >> 2] = a2;
+      c[i2 + 20 >> 2] = 0;
+      c[i2 + 16 >> 2] = 0;
+      b2 = c[6026] | 0;
+      d2 = 1 << a2;
+      do
+        if (b2 & d2) {
+          b2 = f2 << ((a2 | 0) == 31 ? 0 : 25 - (a2 >>> 1) | 0);
+          d2 = c[e2 >> 2] | 0;
+          while (1) {
+            if ((c[d2 + 4 >> 2] & -8 | 0) == (f2 | 0)) {
+              a2 = 73;
+              break;
+            }
+            e2 = d2 + 16 + (b2 >>> 31 << 2) | 0;
+            a2 = c[e2 >> 2] | 0;
+            if (!a2) {
+              a2 = 72;
+              break;
+            } else {
+              b2 = b2 << 1;
+              d2 = a2;
+            }
+          }
+          if ((a2 | 0) == 72) {
+            c[e2 >> 2] = i2;
+            c[i2 + 24 >> 2] = d2;
+            c[i2 + 12 >> 2] = i2;
+            c[i2 + 8 >> 2] = i2;
+            break;
+          } else if ((a2 | 0) == 73) {
+            h2 = d2 + 8 | 0;
+            j2 = c[h2 >> 2] | 0;
+            c[j2 + 12 >> 2] = i2;
+            c[h2 >> 2] = i2;
+            c[i2 + 8 >> 2] = j2;
+            c[i2 + 12 >> 2] = d2;
+            c[i2 + 24 >> 2] = 0;
+            break;
+          }
+        } else {
+          c[6026] = b2 | d2;
+          c[e2 >> 2] = i2;
+          c[i2 + 24 >> 2] = e2;
+          c[i2 + 12 >> 2] = i2;
+          c[i2 + 8 >> 2] = i2;
+        }
+      while (0);
+      j2 = (c[6033] | 0) + -1 | 0;
+      c[6033] = j2;
+      if (!j2)
+        a2 = 24556;
+      else
+        return;
+      while (1) {
+        a2 = c[a2 >> 2] | 0;
+        if (!a2)
+          break;
+        else
+          a2 = a2 + 8 | 0;
+      }
+      c[6033] = -1;
+      return;
+    }
+    function Ob(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, d2 = 0;
+      b2 = l;
+      l = l + 16 | 0;
+      if ((l | 0) >= (m | 0))
+        W(16);
+      d2 = b2;
+      c[d2 >> 2] = Sb(c[a2 + 60 >> 2] | 0) | 0;
+      a2 = Qb(ea(6, d2 | 0) | 0) | 0;
+      l = b2;
+      return a2 | 0;
+    }
+    function Pb(a2, b2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0;
+      f2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      g2 = f2;
+      e2 = f2 + 20 | 0;
+      c[g2 >> 2] = c[a2 + 60 >> 2];
+      c[g2 + 4 >> 2] = 0;
+      c[g2 + 8 >> 2] = b2;
+      c[g2 + 12 >> 2] = e2;
+      c[g2 + 16 >> 2] = d2;
+      if ((Qb(ba(140, g2 | 0) | 0) | 0) < 0) {
+        c[e2 >> 2] = -1;
+        a2 = -1;
+      } else
+        a2 = c[e2 >> 2] | 0;
+      l = f2;
+      return a2 | 0;
+    }
+    function Qb(a2) {
+      a2 = a2 | 0;
+      if (a2 >>> 0 > 4294963200) {
+        c[(Rb() | 0) >> 2] = 0 - a2;
+        a2 = -1;
+      }
+      return a2 | 0;
+    }
+    function Rb() {
+      return 24596;
+    }
+    function Sb(a2) {
+      a2 = a2 | 0;
+      return a2 | 0;
+    }
+    function Tb(b2, d2, e2) {
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0;
+      g2 = l;
+      l = l + 32 | 0;
+      if ((l | 0) >= (m | 0))
+        W(32);
+      f2 = g2;
+      c[b2 + 36 >> 2] = 3;
+      if ((c[b2 >> 2] & 64 | 0) == 0 ? (c[f2 >> 2] = c[b2 + 60 >> 2], c[f2 + 4 >> 2] = 21523, c[f2 + 8 >> 2] = g2 + 16, da(54, f2 | 0) | 0) : 0)
+        a[b2 + 75 >> 0] = -1;
+      f2 = Ub(b2, d2, e2) | 0;
+      l = g2;
+      return f2 | 0;
+    }
+    function Ub(a2, b2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0, g2 = 0, h2 = 0, i2 = 0, j2 = 0, k2 = 0, n2 = 0, o2 = 0, p2 = 0, q2 = 0;
+      o2 = l;
+      l = l + 48 | 0;
+      if ((l | 0) >= (m | 0))
+        W(48);
+      k2 = o2 + 16 | 0;
+      g2 = o2;
+      f2 = o2 + 32 | 0;
+      i2 = a2 + 28 | 0;
+      e2 = c[i2 >> 2] | 0;
+      c[f2 >> 2] = e2;
+      j2 = a2 + 20 | 0;
+      e2 = (c[j2 >> 2] | 0) - e2 | 0;
+      c[f2 + 4 >> 2] = e2;
+      c[f2 + 8 >> 2] = b2;
+      c[f2 + 12 >> 2] = d2;
+      e2 = e2 + d2 | 0;
+      h2 = a2 + 60 | 0;
+      c[g2 >> 2] = c[h2 >> 2];
+      c[g2 + 4 >> 2] = f2;
+      c[g2 + 8 >> 2] = 2;
+      g2 = Qb(ca(146, g2 | 0) | 0) | 0;
+      a:
+        do
+          if ((e2 | 0) != (g2 | 0)) {
+            b2 = 2;
+            while (1) {
+              if ((g2 | 0) < 0)
+                break;
+              e2 = e2 - g2 | 0;
+              q2 = c[f2 + 4 >> 2] | 0;
+              p2 = g2 >>> 0 > q2 >>> 0;
+              f2 = p2 ? f2 + 8 | 0 : f2;
+              b2 = b2 + (p2 << 31 >> 31) | 0;
+              q2 = g2 - (p2 ? q2 : 0) | 0;
+              c[f2 >> 2] = (c[f2 >> 2] | 0) + q2;
+              p2 = f2 + 4 | 0;
+              c[p2 >> 2] = (c[p2 >> 2] | 0) - q2;
+              c[k2 >> 2] = c[h2 >> 2];
+              c[k2 + 4 >> 2] = f2;
+              c[k2 + 8 >> 2] = b2;
+              g2 = Qb(ca(146, k2 | 0) | 0) | 0;
+              if ((e2 | 0) == (g2 | 0)) {
+                n2 = 3;
+                break a;
+              }
+            }
+            c[a2 + 16 >> 2] = 0;
+            c[i2 >> 2] = 0;
+            c[j2 >> 2] = 0;
+            c[a2 >> 2] = c[a2 >> 2] | 32;
+            if ((b2 | 0) == 2)
+              d2 = 0;
+            else
+              d2 = d2 - (c[f2 + 4 >> 2] | 0) | 0;
+          } else
+            n2 = 3;
+        while (0);
+      if ((n2 | 0) == 3) {
+        q2 = c[a2 + 44 >> 2] | 0;
+        c[a2 + 16 >> 2] = q2 + (c[a2 + 48 >> 2] | 0);
+        c[i2 >> 2] = q2;
+        c[j2 >> 2] = q2;
+      }
+      l = o2;
+      return d2 | 0;
+    }
+    function Xb() {
+      $(24600);
+      return 24608;
+    }
+    function Yb() {
+      fa(24600);
+      return;
+    }
+    function Zb(a2) {
+      a2 = a2 | 0;
+      var b2 = 0;
+      do
+        if (a2) {
+          if ((c[a2 + 76 >> 2] | 0) <= -1) {
+            b2 = _b(a2) | 0;
+            break;
+          }
+          b2 = _b(a2) | 0;
+        } else {
+          if (!(c[59] | 0))
+            b2 = 0;
+          else
+            b2 = Zb(c[59] | 0) | 0;
+          a2 = c[(Xb() | 0) >> 2] | 0;
+          if (a2)
+            do {
+              if ((c[a2 + 76 >> 2] | 0) > -1)
+                ;
+              if ((c[a2 + 20 >> 2] | 0) >>> 0 > (c[a2 + 28 >> 2] | 0) >>> 0)
+                b2 = _b(a2) | 0 | b2;
+              a2 = c[a2 + 56 >> 2] | 0;
+            } while ((a2 | 0) != 0);
+          Yb();
+        }
+      while (0);
+      return b2 | 0;
+    }
+    function _b(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, d2 = 0, e2 = 0, f2 = 0, g2 = 0, h2 = 0;
+      b2 = a2 + 20 | 0;
+      h2 = a2 + 28 | 0;
+      if ((c[b2 >> 2] | 0) >>> 0 > (c[h2 >> 2] | 0) >>> 0 ? (ka[c[a2 + 36 >> 2] & 3](a2, 0, 0) | 0, (c[b2 >> 2] | 0) == 0) : 0)
+        a2 = -1;
+      else {
+        d2 = a2 + 4 | 0;
+        e2 = c[d2 >> 2] | 0;
+        f2 = a2 + 8 | 0;
+        g2 = c[f2 >> 2] | 0;
+        if (e2 >>> 0 < g2 >>> 0)
+          ka[c[a2 + 40 >> 2] & 3](a2, e2 - g2 | 0, 1) | 0;
+        c[a2 + 16 >> 2] = 0;
+        c[h2 >> 2] = 0;
+        c[b2 >> 2] = 0;
+        c[f2 >> 2] = 0;
+        c[d2 >> 2] = 0;
+        a2 = 0;
+      }
+      return a2 | 0;
+    }
+    function $b() {
+    }
+    function ac(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      var c2 = 0, d2 = 0, e2 = 0, f2 = 0;
+      f2 = a2 & 65535;
+      e2 = b2 & 65535;
+      c2 = N(e2, f2) | 0;
+      d2 = a2 >>> 16;
+      a2 = (c2 >>> 16) + (N(e2, d2) | 0) | 0;
+      e2 = b2 >>> 16;
+      b2 = N(e2, f2) | 0;
+      return (y = (a2 >>> 16) + (N(e2, d2) | 0) + (((a2 & 65535) + b2 | 0) >>> 16) | 0, a2 + b2 << 16 | c2 & 65535 | 0) | 0;
+    }
+    function bc(a2, b2, c2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      var e2 = 0, f2 = 0;
+      e2 = a2;
+      f2 = c2;
+      c2 = ac(e2, f2) | 0;
+      a2 = y;
+      return (y = (N(b2, f2) | 0) + (N(d2, e2) | 0) + a2 | a2 & 0, c2 | 0 | 0) | 0;
+    }
+    function cc(a2, b2, c2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      c2 = c2 | 0;
+      if ((c2 | 0) < 32) {
+        y = b2 >>> c2;
+        return a2 >>> c2 | (b2 & (1 << c2) - 1) << 32 - c2;
+      }
+      y = 0;
+      return b2 >>> c2 - 32 | 0;
+    }
+    function dc(a2, b2, c2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      c2 = c2 | 0;
+      if ((c2 | 0) < 32) {
+        y = b2 << c2 | (a2 & (1 << c2) - 1 << 32 - c2) >>> 32 - c2;
+        return a2 << c2;
+      }
+      y = a2 << c2 - 32;
+      return 0;
+    }
+    function ec(b2, d2, e2) {
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0;
+      if ((e2 | 0) >= 8192)
+        return ga(b2 | 0, d2 | 0, e2 | 0) | 0;
+      h2 = b2 | 0;
+      g2 = b2 + e2 | 0;
+      if ((b2 & 3) == (d2 & 3)) {
+        while (b2 & 3) {
+          if (!e2)
+            return h2 | 0;
+          a[b2 >> 0] = a[d2 >> 0] | 0;
+          b2 = b2 + 1 | 0;
+          d2 = d2 + 1 | 0;
+          e2 = e2 - 1 | 0;
+        }
+        e2 = g2 & -4 | 0;
+        f2 = e2 - 64 | 0;
+        while ((b2 | 0) <= (f2 | 0)) {
+          c[b2 >> 2] = c[d2 >> 2];
+          c[b2 + 4 >> 2] = c[d2 + 4 >> 2];
+          c[b2 + 8 >> 2] = c[d2 + 8 >> 2];
+          c[b2 + 12 >> 2] = c[d2 + 12 >> 2];
+          c[b2 + 16 >> 2] = c[d2 + 16 >> 2];
+          c[b2 + 20 >> 2] = c[d2 + 20 >> 2];
+          c[b2 + 24 >> 2] = c[d2 + 24 >> 2];
+          c[b2 + 28 >> 2] = c[d2 + 28 >> 2];
+          c[b2 + 32 >> 2] = c[d2 + 32 >> 2];
+          c[b2 + 36 >> 2] = c[d2 + 36 >> 2];
+          c[b2 + 40 >> 2] = c[d2 + 40 >> 2];
+          c[b2 + 44 >> 2] = c[d2 + 44 >> 2];
+          c[b2 + 48 >> 2] = c[d2 + 48 >> 2];
+          c[b2 + 52 >> 2] = c[d2 + 52 >> 2];
+          c[b2 + 56 >> 2] = c[d2 + 56 >> 2];
+          c[b2 + 60 >> 2] = c[d2 + 60 >> 2];
+          b2 = b2 + 64 | 0;
+          d2 = d2 + 64 | 0;
+        }
+        while ((b2 | 0) < (e2 | 0)) {
+          c[b2 >> 2] = c[d2 >> 2];
+          b2 = b2 + 4 | 0;
+          d2 = d2 + 4 | 0;
+        }
+      } else {
+        e2 = g2 - 4 | 0;
+        while ((b2 | 0) < (e2 | 0)) {
+          a[b2 >> 0] = a[d2 >> 0] | 0;
+          a[b2 + 1 >> 0] = a[d2 + 1 >> 0] | 0;
+          a[b2 + 2 >> 0] = a[d2 + 2 >> 0] | 0;
+          a[b2 + 3 >> 0] = a[d2 + 3 >> 0] | 0;
+          b2 = b2 + 4 | 0;
+          d2 = d2 + 4 | 0;
+        }
+      }
+      while ((b2 | 0) < (g2 | 0)) {
+        a[b2 >> 0] = a[d2 >> 0] | 0;
+        b2 = b2 + 1 | 0;
+        d2 = d2 + 1 | 0;
+      }
+      return h2 | 0;
+    }
+    function fc(b2, d2, e2) {
+      b2 = b2 | 0;
+      d2 = d2 | 0;
+      e2 = e2 | 0;
+      var f2 = 0, g2 = 0, h2 = 0, i2 = 0;
+      h2 = b2 + e2 | 0;
+      d2 = d2 & 255;
+      if ((e2 | 0) >= 67) {
+        while (b2 & 3) {
+          a[b2 >> 0] = d2;
+          b2 = b2 + 1 | 0;
+        }
+        f2 = h2 & -4 | 0;
+        g2 = f2 - 64 | 0;
+        i2 = d2 | d2 << 8 | d2 << 16 | d2 << 24;
+        while ((b2 | 0) <= (g2 | 0)) {
+          c[b2 >> 2] = i2;
+          c[b2 + 4 >> 2] = i2;
+          c[b2 + 8 >> 2] = i2;
+          c[b2 + 12 >> 2] = i2;
+          c[b2 + 16 >> 2] = i2;
+          c[b2 + 20 >> 2] = i2;
+          c[b2 + 24 >> 2] = i2;
+          c[b2 + 28 >> 2] = i2;
+          c[b2 + 32 >> 2] = i2;
+          c[b2 + 36 >> 2] = i2;
+          c[b2 + 40 >> 2] = i2;
+          c[b2 + 44 >> 2] = i2;
+          c[b2 + 48 >> 2] = i2;
+          c[b2 + 52 >> 2] = i2;
+          c[b2 + 56 >> 2] = i2;
+          c[b2 + 60 >> 2] = i2;
+          b2 = b2 + 64 | 0;
+        }
+        while ((b2 | 0) < (f2 | 0)) {
+          c[b2 >> 2] = i2;
+          b2 = b2 + 4 | 0;
+        }
+      }
+      while ((b2 | 0) < (h2 | 0)) {
+        a[b2 >> 0] = d2;
+        b2 = b2 + 1 | 0;
+      }
+      return h2 - e2 | 0;
+    }
+    function gc(a2) {
+      a2 = a2 | 0;
+      var b2 = 0, d2 = 0;
+      d2 = c[i >> 2] | 0;
+      b2 = d2 + a2 | 0;
+      if ((a2 | 0) > 0 & (b2 | 0) < (d2 | 0) | (b2 | 0) < 0) {
+        V() | 0;
+        aa(12);
+        return -1;
+      }
+      c[i >> 2] = b2;
+      if ((b2 | 0) > (U() | 0) ? (T() | 0) == 0 : 0) {
+        c[i >> 2] = d2;
+        aa(12);
+        return -1;
+      }
+      return d2 | 0;
+    }
+    function hc(a2, b2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      return ja[a2 & 1](b2 | 0) | 0;
+    }
+    function ic(a2, b2, c2, d2) {
+      a2 = a2 | 0;
+      b2 = b2 | 0;
+      c2 = c2 | 0;
+      d2 = d2 | 0;
+      return ka[a2 & 3](b2 | 0, c2 | 0, d2 | 0) | 0;
+    }
+    function jc(a2) {
+      X(0);
+      return 0;
+    }
+    function kc(a2, b2, c2) {
+      Y(1);
+      return 0;
+    }
+    var ja = [jc, Ob];
+    var ka = [kc, Tb, Pb, Ub];
+    return { _D_IF_decode: ua, _D_IF_exit: ta, _D_IF_init: sa, ___errno_location: Rb, ___muldi3: bc, _bitshift64Lshr: cc, _bitshift64Shl: dc, _fflush: Zb, _free: Nb, _malloc: Mb, _memcpy: ec, _memset: fc, _sbrk: gc, dynCall_ii: hc, dynCall_iiii: ic, establishStackSpace: oa, getTempRet0: ra, runPostSets: $b, setTempRet0: qa, setThrew: pa, stackAlloc: la, stackRestore: na, stackSave: ma };
+  }(Module2.asmGlobalArg, Module2.asmLibraryArg, buffer);
+  var real__D_IF_decode = asm["_D_IF_decode"];
+  asm["_D_IF_decode"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__D_IF_decode.apply(null, arguments);
+  };
+  var real__D_IF_exit = asm["_D_IF_exit"];
+  asm["_D_IF_exit"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__D_IF_exit.apply(null, arguments);
+  };
+  var real__D_IF_init = asm["_D_IF_init"];
+  asm["_D_IF_init"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__D_IF_init.apply(null, arguments);
+  };
+  var real____errno_location = asm["___errno_location"];
+  asm["___errno_location"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real____errno_location.apply(null, arguments);
+  };
+  var real____muldi3 = asm["___muldi3"];
+  asm["___muldi3"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real____muldi3.apply(null, arguments);
+  };
+  var real__bitshift64Lshr = asm["_bitshift64Lshr"];
+  asm["_bitshift64Lshr"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__bitshift64Lshr.apply(null, arguments);
+  };
+  var real__bitshift64Shl = asm["_bitshift64Shl"];
+  asm["_bitshift64Shl"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__bitshift64Shl.apply(null, arguments);
+  };
+  var real__fflush = asm["_fflush"];
+  asm["_fflush"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__fflush.apply(null, arguments);
+  };
+  var real__free = asm["_free"];
+  asm["_free"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__free.apply(null, arguments);
+  };
+  var real__malloc = asm["_malloc"];
+  asm["_malloc"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__malloc.apply(null, arguments);
+  };
+  var real__sbrk = asm["_sbrk"];
+  asm["_sbrk"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real__sbrk.apply(null, arguments);
+  };
+  var real_establishStackSpace = asm["establishStackSpace"];
+  asm["establishStackSpace"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_establishStackSpace.apply(null, arguments);
+  };
+  var real_getTempRet0 = asm["getTempRet0"];
+  asm["getTempRet0"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_getTempRet0.apply(null, arguments);
+  };
+  var real_setTempRet0 = asm["setTempRet0"];
+  asm["setTempRet0"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_setTempRet0.apply(null, arguments);
+  };
+  var real_setThrew = asm["setThrew"];
+  asm["setThrew"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_setThrew.apply(null, arguments);
+  };
+  var real_stackAlloc = asm["stackAlloc"];
+  asm["stackAlloc"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_stackAlloc.apply(null, arguments);
+  };
+  var real_stackRestore = asm["stackRestore"];
+  asm["stackRestore"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_stackRestore.apply(null, arguments);
+  };
+  var real_stackSave = asm["stackSave"];
+  asm["stackSave"] = function() {
+    assert(runtimeInitialized, "you need to wait for the runtime to be ready (e.g. wait for main() to be called)");
+    assert(!runtimeExited, "the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)");
+    return real_stackSave.apply(null, arguments);
+  };
+  Module2["_D_IF_decode"] = asm["_D_IF_decode"];
+  Module2["_D_IF_exit"] = asm["_D_IF_exit"];
+  Module2["_D_IF_init"] = asm["_D_IF_init"];
+  Module2["___errno_location"] = asm["___errno_location"];
+  Module2["___muldi3"] = asm["___muldi3"];
+  Module2["_bitshift64Lshr"] = asm["_bitshift64Lshr"];
+  Module2["_bitshift64Shl"] = asm["_bitshift64Shl"];
+  Module2["_fflush"] = asm["_fflush"];
+  Module2["_free"] = asm["_free"];
+  Module2["_malloc"] = asm["_malloc"];
+  Module2["_memcpy"] = asm["_memcpy"];
+  Module2["_memset"] = asm["_memset"];
+  Module2["_sbrk"] = asm["_sbrk"];
+  Module2["establishStackSpace"] = asm["establishStackSpace"];
+  Module2["getTempRet0"] = asm["getTempRet0"];
+  Module2["runPostSets"] = asm["runPostSets"];
+  Module2["setTempRet0"] = asm["setTempRet0"];
+  Module2["setThrew"] = asm["setThrew"];
+  Module2["stackAlloc"] = asm["stackAlloc"];
+  Module2["stackRestore"] = asm["stackRestore"];
+  var stackSave = Module2["stackSave"] = asm["stackSave"];
+  Module2["dynCall_ii"] = asm["dynCall_ii"];
+  Module2["dynCall_iiii"] = asm["dynCall_iiii"];
+  Module2["asm"] = asm;
+  if (!Module2["intArrayFromString"])
+    Module2["intArrayFromString"] = function() {
+      abort("'intArrayFromString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["intArrayToString"])
+    Module2["intArrayToString"] = function() {
+      abort("'intArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["ccall"])
+    Module2["ccall"] = function() {
+      abort("'ccall' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["cwrap"])
+    Module2["cwrap"] = function() {
+      abort("'cwrap' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["setValue"])
+    Module2["setValue"] = function() {
+      abort("'setValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getValue"])
+    Module2["getValue"] = function() {
+      abort("'getValue' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["allocate"])
+    Module2["allocate"] = function() {
+      abort("'allocate' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getMemory"])
+    Module2["getMemory"] = function() {
+      abort("'getMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["Pointer_stringify"])
+    Module2["Pointer_stringify"] = function() {
+      abort("'Pointer_stringify' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["AsciiToString"])
+    Module2["AsciiToString"] = function() {
+      abort("'AsciiToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stringToAscii"])
+    Module2["stringToAscii"] = function() {
+      abort("'stringToAscii' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["UTF8ArrayToString"])
+    Module2["UTF8ArrayToString"] = function() {
+      abort("'UTF8ArrayToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["UTF8ToString"])
+    Module2["UTF8ToString"] = function() {
+      abort("'UTF8ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stringToUTF8Array"])
+    Module2["stringToUTF8Array"] = function() {
+      abort("'stringToUTF8Array' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stringToUTF8"])
+    Module2["stringToUTF8"] = function() {
+      abort("'stringToUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["lengthBytesUTF8"])
+    Module2["lengthBytesUTF8"] = function() {
+      abort("'lengthBytesUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["UTF16ToString"])
+    Module2["UTF16ToString"] = function() {
+      abort("'UTF16ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stringToUTF16"])
+    Module2["stringToUTF16"] = function() {
+      abort("'stringToUTF16' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["lengthBytesUTF16"])
+    Module2["lengthBytesUTF16"] = function() {
+      abort("'lengthBytesUTF16' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["UTF32ToString"])
+    Module2["UTF32ToString"] = function() {
+      abort("'UTF32ToString' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stringToUTF32"])
+    Module2["stringToUTF32"] = function() {
+      abort("'stringToUTF32' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["lengthBytesUTF32"])
+    Module2["lengthBytesUTF32"] = function() {
+      abort("'lengthBytesUTF32' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["allocateUTF8"])
+    Module2["allocateUTF8"] = function() {
+      abort("'allocateUTF8' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["stackTrace"])
+    Module2["stackTrace"] = function() {
+      abort("'stackTrace' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addOnPreRun"])
+    Module2["addOnPreRun"] = function() {
+      abort("'addOnPreRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addOnInit"])
+    Module2["addOnInit"] = function() {
+      abort("'addOnInit' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addOnPreMain"])
+    Module2["addOnPreMain"] = function() {
+      abort("'addOnPreMain' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addOnExit"])
+    Module2["addOnExit"] = function() {
+      abort("'addOnExit' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addOnPostRun"])
+    Module2["addOnPostRun"] = function() {
+      abort("'addOnPostRun' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["writeStringToMemory"])
+    Module2["writeStringToMemory"] = function() {
+      abort("'writeStringToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["writeArrayToMemory"])
+    Module2["writeArrayToMemory"] = function() {
+      abort("'writeArrayToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["writeAsciiToMemory"])
+    Module2["writeAsciiToMemory"] = function() {
+      abort("'writeAsciiToMemory' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addRunDependency"])
+    Module2["addRunDependency"] = function() {
+      abort("'addRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["removeRunDependency"])
+    Module2["removeRunDependency"] = function() {
+      abort("'removeRunDependency' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS"])
+    Module2["FS"] = function() {
+      abort("'FS' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["FS_createFolder"])
+    Module2["FS_createFolder"] = function() {
+      abort("'FS_createFolder' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createPath"])
+    Module2["FS_createPath"] = function() {
+      abort("'FS_createPath' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createDataFile"])
+    Module2["FS_createDataFile"] = function() {
+      abort("'FS_createDataFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createPreloadedFile"])
+    Module2["FS_createPreloadedFile"] = function() {
+      abort("'FS_createPreloadedFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createLazyFile"])
+    Module2["FS_createLazyFile"] = function() {
+      abort("'FS_createLazyFile' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createLink"])
+    Module2["FS_createLink"] = function() {
+      abort("'FS_createLink' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_createDevice"])
+    Module2["FS_createDevice"] = function() {
+      abort("'FS_createDevice' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["FS_unlink"])
+    Module2["FS_unlink"] = function() {
+      abort("'FS_unlink' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ). Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you");
+    };
+  if (!Module2["GL"])
+    Module2["GL"] = function() {
+      abort("'GL' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["staticAlloc"])
+    Module2["staticAlloc"] = function() {
+      abort("'staticAlloc' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["dynamicAlloc"])
+    Module2["dynamicAlloc"] = function() {
+      abort("'dynamicAlloc' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["warnOnce"])
+    Module2["warnOnce"] = function() {
+      abort("'warnOnce' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["loadDynamicLibrary"])
+    Module2["loadDynamicLibrary"] = function() {
+      abort("'loadDynamicLibrary' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["loadWebAssemblyModule"])
+    Module2["loadWebAssemblyModule"] = function() {
+      abort("'loadWebAssemblyModule' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getLEB"])
+    Module2["getLEB"] = function() {
+      abort("'getLEB' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getFunctionTables"])
+    Module2["getFunctionTables"] = function() {
+      abort("'getFunctionTables' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["alignFunctionTables"])
+    Module2["alignFunctionTables"] = function() {
+      abort("'alignFunctionTables' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["registerFunctions"])
+    Module2["registerFunctions"] = function() {
+      abort("'registerFunctions' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["addFunction"])
+    Module2["addFunction"] = function() {
+      abort("'addFunction' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["removeFunction"])
+    Module2["removeFunction"] = function() {
+      abort("'removeFunction' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getFuncWrapper"])
+    Module2["getFuncWrapper"] = function() {
+      abort("'getFuncWrapper' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["prettyPrint"])
+    Module2["prettyPrint"] = function() {
+      abort("'prettyPrint' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["makeBigInt"])
+    Module2["makeBigInt"] = function() {
+      abort("'makeBigInt' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["dynCall"])
+    Module2["dynCall"] = function() {
+      abort("'dynCall' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["getCompilerSetting"])
+    Module2["getCompilerSetting"] = function() {
+      abort("'getCompilerSetting' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["intArrayFromBase64"])
+    Module2["intArrayFromBase64"] = function() {
+      abort("'intArrayFromBase64' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["tryParseAsDataURI"])
+    Module2["tryParseAsDataURI"] = function() {
+      abort("'tryParseAsDataURI' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    };
+  if (!Module2["ALLOC_NORMAL"])
+    Object.defineProperty(Module2, "ALLOC_NORMAL", { get: function() {
+      abort("'ALLOC_NORMAL' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    } });
+  if (!Module2["ALLOC_STACK"])
+    Object.defineProperty(Module2, "ALLOC_STACK", { get: function() {
+      abort("'ALLOC_STACK' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    } });
+  if (!Module2["ALLOC_STATIC"])
+    Object.defineProperty(Module2, "ALLOC_STATIC", { get: function() {
+      abort("'ALLOC_STATIC' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    } });
+  if (!Module2["ALLOC_DYNAMIC"])
+    Object.defineProperty(Module2, "ALLOC_DYNAMIC", { get: function() {
+      abort("'ALLOC_DYNAMIC' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    } });
+  if (!Module2["ALLOC_NONE"])
+    Object.defineProperty(Module2, "ALLOC_NONE", { get: function() {
+      abort("'ALLOC_NONE' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)");
+    } });
+  if (memoryInitializer) {
+    if (!isDataURI(memoryInitializer)) {
+      if (typeof Module2["locateFile"] === "function") {
+        memoryInitializer = Module2["locateFile"](memoryInitializer);
+      } else if (Module2["memoryInitializerPrefixURL"]) {
+        memoryInitializer = Module2["memoryInitializerPrefixURL"] + memoryInitializer;
+      }
+    }
+    if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
+      var data = Module2["readBinary"](memoryInitializer);
+      HEAPU8.set(data, GLOBAL_BASE);
+    } else {
+      let doBrowserLoad = function() {
+        Module2["readAsync"](memoryInitializer, applyMemoryInitializer, function() {
+          throw "could not load memory initializer " + memoryInitializer;
+        });
+      };
+      addRunDependency("memory initializer");
+      var applyMemoryInitializer = function(data2) {
+        if (data2.byteLength)
+          data2 = new Uint8Array(data2);
+        for (var i = 0; i < data2.length; i++) {
+          assert(HEAPU8[GLOBAL_BASE + i] === 0, "area for memory initializer should not have been touched before it's loaded");
+        }
+        HEAPU8.set(data2, GLOBAL_BASE);
+        if (Module2["memoryInitializerRequest"])
+          delete Module2["memoryInitializerRequest"].response;
+        removeRunDependency("memory initializer");
+      };
+      var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
+      if (memoryInitializerBytes) {
+        applyMemoryInitializer(memoryInitializerBytes.buffer);
+      } else if (Module2["memoryInitializerRequest"]) {
+        let useRequest = function() {
+          var request = Module2["memoryInitializerRequest"];
+          var response = request.response;
+          if (request.status !== 200 && request.status !== 0) {
+            var data2 = tryParseAsDataURI(Module2["memoryInitializerRequestURL"]);
+            if (data2) {
+              response = data2.buffer;
+            } else {
+              console.warn("a problem seems to have happened with Module.memoryInitializerRequest, status: " + request.status + ", retrying " + memoryInitializer);
+              doBrowserLoad();
+              return;
+            }
+          }
+          applyMemoryInitializer(response);
+        };
+        if (Module2["memoryInitializerRequest"].response) {
+          setTimeout(useRequest, 0);
+        } else {
+          Module2["memoryInitializerRequest"].addEventListener("load", useRequest);
+        }
+      } else {
+        doBrowserLoad();
+      }
+    }
+  }
+  function ExitStatus(status) {
+    this.name = "ExitStatus";
+    this.message = "Program terminated with exit(" + status + ")";
+    this.status = status;
+  }
+  ExitStatus.prototype = new Error();
+  ExitStatus.prototype.constructor = ExitStatus;
+  var initialStackTop;
+  dependenciesFulfilled = function runCaller() {
+    if (!Module2["calledRun"])
+      run();
+    if (!Module2["calledRun"])
+      dependenciesFulfilled = runCaller;
+  };
+  function run(args) {
+    args = args || Module2["arguments"];
+    if (runDependencies > 0) {
+      return;
+    }
+    writeStackCookie();
+    preRun();
+    if (runDependencies > 0)
+      return;
+    if (Module2["calledRun"])
+      return;
+    function doRun() {
+      if (Module2["calledRun"])
+        return;
+      Module2["calledRun"] = true;
+      if (ABORT)
+        return;
+      ensureInitRuntime();
+      preMain();
+      if (Module2["onRuntimeInitialized"])
+        Module2["onRuntimeInitialized"]();
+      assert(!Module2["_main"], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
+      postRun();
+    }
+    if (Module2["setStatus"]) {
+      Module2["setStatus"]("Running...");
+      setTimeout(function() {
+        setTimeout(function() {
+          Module2["setStatus"]("");
+        }, 1);
+        doRun();
+      }, 1);
+    } else {
+      doRun();
+    }
+    checkStackCookie();
+  }
+  Module2["run"] = run;
+  function checkUnflushedContent() {
+    var print2 = Module2["print"];
+    var printErr2 = Module2["printErr"];
+    var has = false;
+    Module2["print"] = Module2["printErr"] = function(x) {
+      has = true;
+    };
+    try {
+      var flush = flush_NO_FILESYSTEM;
+      if (flush)
+        flush(0);
+    } catch (e) {
+    }
+    Module2["print"] = print2;
+    Module2["printErr"] = printErr2;
+    if (has) {
+      warnOnce("stdio streams had content in them that was not flushed. you should set NO_EXIT_RUNTIME to 0 (see the FAQ), or make sure to emit a newline when you printf etc.");
+    }
+  }
+  function exit(status, implicit) {
+    checkUnflushedContent();
+    if (implicit && Module2["noExitRuntime"] && status === 0) {
+      return;
+    }
+    if (Module2["noExitRuntime"]) {
+      if (!implicit) {
+        Module2.printErr("exit(" + status + ") called, but NO_EXIT_RUNTIME is set, so halting execution but not exiting the runtime or preventing further async execution (build with NO_EXIT_RUNTIME=0, if you want a true shutdown)");
+      }
+    } else {
+      ABORT = true;
+      STACKTOP = initialStackTop;
+      exitRuntime();
+      if (Module2["onExit"])
+        Module2["onExit"](status);
+    }
+    if (ENVIRONMENT_IS_NODE) {
+      process["exit"](status);
+    }
+    Module2["quit"](status, new ExitStatus(status));
+  }
+  Module2["exit"] = exit;
+  var abortDecorators = [];
+  function abort(what) {
+    if (Module2["onAbort"]) {
+      Module2["onAbort"](what);
+    }
+    if (what !== void 0) {
+      Module2.print(what);
+      Module2.printErr(what);
+      what = JSON.stringify(what);
+    } else {
+      what = "";
+    }
+    ABORT = true;
+    var extra = "";
+    var output = "abort(" + what + ") at " + stackTrace() + extra;
+    if (abortDecorators) {
+      abortDecorators.forEach(function(decorator) {
+        output = decorator(output, what);
+      });
+    }
+    throw output;
+  }
+  Module2["abort"] = abort;
+  if (Module2["preInit"]) {
+    if (typeof Module2["preInit"] == "function")
+      Module2["preInit"] = [Module2["preInit"]];
+    while (Module2["preInit"].length > 0) {
+      Module2["preInit"].pop()();
+    }
+  }
+  Module2["noExitRuntime"] = true;
+  run();
+  return AMRWB2;
+}();
+
+const AMRWB_UTIL = {
+  decode(amr) {
+    const raw = this._decode(amr);
+    if (!raw)
+      return null;
+    const out = new Float32Array(raw.length);
+    for (let i = 0; i < out.length; i++)
+      out[i] = raw[i] / 32768;
+    return out;
+  },
+  decodeRtp(rtp) {
+    const raw = this._decodeRtp(rtp);
+    if (!raw)
+      return null;
+    const out = new Float32Array(raw.length * 2);
+    for (let i = 0; i < out.length; i++) {
+      out[i * 2] = raw[i] / 32768;
+      out[i * 2 + 1] = out[i * 2];
+    }
+    return out;
+  },
+  decodeInit() {
+    if (!this.decoder)
+      this.decoder = this.D_IF_init();
+    return this.decoder;
+  },
+  decodeExit() {
+    if (this.decoder) {
+      this.D_IF_exit(this.decoder);
+      delete this.decoder;
+    }
+  },
+  _decode(amr) {
+    if (String.fromCharCode.apply(null, amr.slice(0, this.AMR_HEADER.length)) !== this.AMR_HEADER)
+      return null;
+    if (!this.decoder)
+      return null;
+    let out = new Int16Array(Math.floor(amr.length / 6 * this.PCM_BUFFER_COUNT));
+    let buf = AMRWB._malloc(this.AMR_BUFFER_COUNT);
+    const decodeInBuffer = new Uint8Array(AMRWB._HEAPU8.buffer, buf, this.AMR_BUFFER_COUNT);
+    buf = AMRWB._malloc(this.PCM_BUFFER_COUNT * 2);
+    const decodeOutBuffer = new Int16Array(AMRWB._HEAPU8.buffer, buf, this.PCM_BUFFER_COUNT);
+    let inOffset = this.AMR_HEADER.length;
+    let outOffset = 0;
+    while (inOffset + 1 < amr.length && outOffset + 1 < out.length) {
+      const size = this.SIZES[amr[inOffset] >> 3 & 15];
+      if (inOffset + size + 1 > amr.length)
+        break;
+      decodeInBuffer.set(amr.slice(inOffset, inOffset + size + 1));
+      this.D_IF_decode(this.decoder, decodeInBuffer.byteOffset, decodeOutBuffer.byteOffset, 0);
+      if (outOffset + this.PCM_BUFFER_COUNT > out.length) {
+        const newOut = new Int16Array(out.length * 2);
+        newOut.set(out.slice(0, outOffset));
+        out = newOut;
+      }
+      out.set(decodeOutBuffer, outOffset);
+      outOffset += this.PCM_BUFFER_COUNT;
+      inOffset += size + 1;
+    }
+    AMRWB._free(decodeInBuffer.byteOffset);
+    AMRWB._free(decodeOutBuffer.byteOffset);
+    return out.slice(0, outOffset);
+  },
+  _decodeRtp(rtp) {
+    const tocPtr = this.RTP_HEADER_SIZE + 1;
+    let payloadLengthCheck = 0;
+    let payLoadptr;
+    for (payLoadptr = this.RTP_HEADER_SIZE + 1; (rtp[payLoadptr] & 128) === 128 && payLoadptr < rtp.length; payLoadptr++) {
+      payloadLengthCheck += this._rtpFrameSize(rtp[payLoadptr]) + 1;
+    }
+    payloadLengthCheck += this._rtpFrameSize(rtp[payLoadptr]) + this.RTP_HEADER_SIZE + 2;
+    payLoadptr++;
+    if (payloadLengthCheck !== rtp.length) {
+      console.log(`RTP calculated vs actual length error: Calc ${payloadLengthCheck}, actual: ${rtp.length}`);
+      return null;
+    }
+    if (!this.decoder)
+      return null;
+    let out = new Int16Array(Math.floor(rtp.length / 6 * this.PCM_BUFFER_COUNT));
+    let buf = AMRWB._malloc(this.AMR_BUFFER_COUNT);
+    const decodeInBuffer = new Uint8Array(AMRWB._HEAPU8.buffer, buf, this.AMR_BUFFER_COUNT);
+    buf = AMRWB._malloc(this.PCM_BUFFER_COUNT * 2);
+    const decodeOutBuffer = new Int16Array(AMRWB._HEAPU8.buffer, buf, this.PCM_BUFFER_COUNT);
+    let outPcmPtr = 0;
+    while ((tocPtr === this.RTP_HEADER_SIZE + 1 && rtp[tocPtr - 1] === this.RTP_TOC_HEADER || (rtp[tocPtr - 1] & 128) === 128) && payLoadptr < rtp.length) {
+      const frameSize = this._rtpFrameSize(rtp[tocPtr]);
+      if (payLoadptr + frameSize > rtp.length)
+        break;
+      decodeInBuffer.set([rtp[tocPtr] & 127]);
+      decodeInBuffer.set(rtp.slice(payLoadptr, payLoadptr + frameSize), 1);
+      this.D_IF_decode(this.decoder, decodeInBuffer.byteOffset, decodeOutBuffer.byteOffset, 0);
+      if (outPcmPtr + this.PCM_BUFFER_COUNT > out.length) {
+        const newOut = new Int16Array(out.length * 2);
+        newOut.set(out.slice(0, outPcmPtr));
+        out = newOut;
+      }
+      out.set(decodeOutBuffer, outPcmPtr);
+      outPcmPtr += this.PCM_BUFFER_COUNT;
+      payLoadptr += frameSize;
+    }
+    AMRWB._free(decodeInBuffer.byteOffset);
+    AMRWB._free(decodeOutBuffer.byteOffset);
+    return out.slice(0, outPcmPtr);
+  },
+  _rtpFrameSize(key) {
+    const frameSizeIndex = key >> 3 & 15;
+    const frameSize = this.SIZES[frameSizeIndex];
+    return frameSize;
+  },
+  SIZES: [17, 23, 32, 36, 40, 46, 50, 58, 60, 5, -1, -1, -1, -1, -1, 0],
+  AMR_BUFFER_COUNT: 61,
+  PCM_BUFFER_COUNT: 320,
+  AMR_HEADER: "#!AMR-WB\n",
+  WAV_HEADER_SIZE: 44,
+  RTP_HEADER_SIZE: 12,
+  RTP_PAYLOAD_ID: 97,
+  RTP_TOC_HEADER: 240
+};
+Object.assign(AMRWB, AMRWB_UTIL);
+
+function float32Array2Uint8Array(float32Array) {
+  const len = float32Array.length;
+  const output = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    let tmp = Math.max(-1, Math.min(1, float32Array[i]));
+    tmp = tmp < 0 ? tmp * 32768 : tmp * 32767;
+    tmp = tmp / 256;
+    output[i] = tmp + 128;
+  }
+  return output;
+}
+function samplesToWAV(samples) {
+  const out = new Uint8Array(samples.length + 44);
+  let offset = 0;
+  const write_int16 = function(value) {
+    const a = new Uint8Array(2);
+    new Int16Array(a.buffer)[0] = value;
+    out.set(a, offset);
+    offset += 2;
+  };
+  const write_int32 = function(value) {
+    const a = new Uint8Array(4);
+    new Int32Array(a.buffer)[0] = value;
+    out.set(a, offset);
+    offset += 4;
+  };
+  const write_string = function(value) {
+    const d = new TextEncoder().encode(value);
+    out.set(d, offset);
+    offset += d.length;
+  };
+  write_string("RIFF");
+  write_int32(36 + samples.length);
+  write_string("WAVEfmt ");
+  write_int32(16);
+  const bits_per_sample = 8;
+  const sample_rate = 16e3;
+  const channels = 1;
+  const bytes_per_frame = bits_per_sample / 8 * channels;
+  const bytes_per_sec = bytes_per_frame * sample_rate;
+  write_int16(1);
+  write_int16(1);
+  write_int32(sample_rate);
+  write_int32(bytes_per_sec);
+  write_int16(bytes_per_frame);
+  write_int16(bits_per_sample);
+  write_string("data");
+  write_int32(samples.length);
+  out.set(samples, offset);
+  return out;
+}
 class ConvertPlayer {
   constructor(opt) {
     this.extName = null;
@@ -25474,7 +36527,17 @@ class ConvertPlayer {
       if (this._file) {
         const fr = new FileReader();
         fr.onload = (e) => {
-          const wavU8Array = AMR.toWAV(new Uint8Array(e.target.result));
+          const U8Array = new Uint8Array(e.target.result);
+          const headerInfo = Array.from(U8Array.slice(0, 6)).toString();
+          let wavU8Array = new Uint8Array();
+          if (headerInfo === "35,33,65,77,82,10") {
+            wavU8Array = AMR.toWAV(U8Array);
+          } else {
+            AMRWB.decodeInit();
+            const samples = AMRWB.decode(U8Array);
+            AMRWB.decodeExit();
+            wavU8Array = samplesToWAV(float32Array2Uint8Array(samples));
+          }
           const url = URL.createObjectURL(new Blob([wavU8Array], { type: "audio/wav" }));
           if (this.audio)
             this.audio.src = url;
@@ -25484,7 +36547,17 @@ class ConvertPlayer {
         fetch(this.playUrl).then((response) => {
           return response.arrayBuffer();
         }).then((buffer) => {
-          const wavU8Array = AMR.toWAV(new Uint8Array(buffer));
+          const U8Array = new Uint8Array(buffer);
+          const headerInfo = Array.from(U8Array.slice(0, 6)).toString();
+          let wavU8Array = new Uint8Array();
+          if (headerInfo === "35,33,65,77,82,10") {
+            wavU8Array = AMR.toWAV(U8Array);
+          } else {
+            AMRWB.decodeInit();
+            const samples = AMRWB.decode(U8Array);
+            AMRWB.decodeExit();
+            wavU8Array = samplesToWAV(float32Array2Uint8Array(samples));
+          }
           const url = URL.createObjectURL(new Blob([wavU8Array], { type: "audio/wav" }));
           if (this.audio)
             this.audio.src = url;
